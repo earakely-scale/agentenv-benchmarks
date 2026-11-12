@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Online-Mind2Web on agent-env</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* A reviewer's queue on the left, the run on the right as a filmstrip of the frames the agent saw after each burst of
+   its actions, and WebJudge's verdict pinned beside the strip. */
+:root {
+  --bg: #f3f5f8; --panel: #ffffff; --ink: #141a24; --muted: #5b6676; --line: #d9dfe8; --sunk: #e9edf3;
+  --accent: #2448b8; --accent-soft: #e3e9fb;
+  --ok: #17803d; --ok-soft: #dcf2e3; --bad: #b42318; --bad-soft: #fbe3e0; --hold: #9a5b00; --hold-soft: #fbedd5;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f131a; --panel: #171c25; --ink: #e7ebf2; --muted: #98a3b4; --line: #2a3240; --sunk: #1e2530;
+  --accent: #8ea8ff; --accent-soft: #222d4d;
+  --ok: #5cd38a; --ok-soft: #173826; --bad: #ff8a7a; --bad-soft: #3d1c18; --hold: #f0b45a; --hold-soft: #3a2a12;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f131a; --panel: #171c25; --ink: #e7ebf2; --muted: #98a3b4; --line: #2a3240; --sunk: #1e2530;
+  --accent: #8ea8ff; --accent-soft: #222d4d;
+  --ok: #5cd38a; --ok-soft: #173826; --bad: #ff8a7a; --bad-soft: #3d1c18; --hold: #f0b45a; --hold-soft: #3a2a12;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.shell { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--panel); }
+.brand { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; min-width: 0; border: 0; background: none;
+  padding: 0; text-align: left; }
+.brand h1 { margin: 0; font: 800 20px/1.1 var(--display); letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-size: 13px; }
+.passes { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.passes button { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 4px 12px;
+  font: 600 12.5px/1.4 var(--mono); color: var(--muted); }
+.passes button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.links { font-size: 13px; display: flex; gap: 14px; }
+.work { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); min-height: 0; }
+aside.queue { border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+.filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px 14px;
+  border-bottom: 1px solid var(--line); }
+.filters select, .filters input { padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); font-size: 13px; min-width: 0; }
+.filters input { grid-column: 1 / -1; }
+.count { font: 12px/1.3 var(--mono); color: var(--muted); padding: 8px 14px 0; }
+.list { overflow-y: auto; min-height: 0; padding: 6px; }
+.level-head { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 12px 8px 6px; }
+.item { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; width: 100%; text-align: left; border: 0;
+  background: transparent; padding: 8px; border-radius: 8px; }
+.item:hover { background: var(--sunk); }
+.item[aria-current="true"] { background: var(--accent-soft); }
+.mark { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); margin-top: 4px; display: inline-block; }
+.mark.success { background: var(--ok); border-color: var(--ok); }
+.mark.failure { background: var(--bad); border-color: var(--bad); }
+.mark.error { background: var(--hold); border-color: var(--hold); }
+.item .t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13.5px; }
+.item .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; font: 11px/1.4 var(--mono); color: var(--muted); }
+main.run { overflow-y: auto; min-height: 0; padding-block: 20px 60px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.overview { max-width: 1100px; display: grid; gap: 20px; }
+.overview h2 { font: 800 28px/1.15 var(--display); margin: 0; letter-spacing: -0.015em; text-wrap: balance; }
+.overview p { margin: 0; color: var(--muted); max-width: 70ch; }
+.arms { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.arm { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 12px; }
+.arm h3 { margin: 0; font: 600 16px/1.3 var(--display); }
+.arm .rate { font: 800 40px/1 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.arm .rate small { font: 400 14px/1.3 var(--body); color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.levels { display: grid; gap: 8px; }
+.lv { display: grid; grid-template-columns: 64px minmax(0, 1fr) 72px; align-items: center; gap: 10px; font-size: 13px; }
+.lv .name { font: 600 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.lv .track { height: 8px; border-radius: 4px; background: var(--sunk); overflow: hidden; display: flex; }
+.lv .track i { display: block; height: 100%; background: var(--ok); }
+.lv .n { font: 12px/1 var(--mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.facts { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; font-size: 14px; }
+.facts dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-size: 13px; }
+.run-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 0 24px; align-items: start; max-width: 1260px; }
+.run-head { grid-column: 1 / -1; }
+.run-head .chips { margin-bottom: 18px; }
+.task h2 { font: 600 24px/1.25 var(--display); margin: 0 0 8px; text-wrap: balance; letter-spacing: -0.01em; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.chip { font: 12px/1 var(--mono); padding: 5px 8px; border-radius: 999px; background: var(--sunk); color: var(--muted); }
+.chip a { text-decoration: none; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.card h3 { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.answer { margin-bottom: 22px; }
+.answer pre { white-space: pre-wrap; font: 14px/1.55 var(--body); margin: 0; max-height: 360px; overflow-y: auto; }
+.steps { display: grid; gap: 18px; }
+.step { display: grid; gap: 8px; scroll-margin-top: 12px; }
+.step header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.step .n { font: 600 12px/1 var(--mono); color: var(--accent); }
+.step .act { font: 13px/1.45 var(--mono); overflow-wrap: anywhere; flex: 1 1 300px; min-width: 0; }
+.pill { font: 600 11px/1 var(--mono); padding: 4px 7px; border-radius: 4px; background: var(--sunk); color: var(--muted); }
+.pill.SUCCESS { background: var(--ok-soft); color: var(--ok); }
+.pill.FAILED { background: var(--bad-soft); color: var(--bad); }
+.pill.seen { background: var(--accent-soft); color: var(--accent); }
+.step .url { font: 12px/1.3 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.frame { display: block; width: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--sunk); cursor: zoom-in; padding: 0; position: relative; }
+.frame img { display: block; width: 100%; height: auto; }
+.side { position: sticky; top: 0; display: grid; gap: 16px; }
+.grade { font: 700 13px/1 var(--mono); text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; }
+.grade.success { color: var(--ok); } .grade.failure { color: var(--bad); } .grade.error { color: var(--hold); }
+.grade.ungraded { color: var(--muted); }
+.verdict { margin: 10px 0 0; font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 50vh; overflow-y: auto; }
+.kp { margin: 6px 0 0; font-size: 13.5px; white-space: pre-wrap; }
+.ids { display: grid; gap: 6px; font-size: 12.5px; }
+.ids div { overflow-wrap: anywhere; font-family: var(--mono); color: var(--muted); }
+.ids b { font-family: var(--body); color: var(--ink); font-weight: 700; margin-right: 6px; }
+.empty { color: var(--muted); padding: 40px 0; }
+.back { border: 0; background: none; padding: 0; color: var(--accent); font: 600 13px/1.4 var(--mono); margin-bottom: 12px; display: none; }
+.lightbox { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(3px);
+  display: grid; place-items: center; z-index: 20; overflow-y: auto;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.lightbox[hidden] { display: none; }
+.lightbox .frame { width: min(1280px, 100%); cursor: zoom-out; box-shadow: 0 20px 60px rgb(0 0 0 / .25); }
+@media (max-width: 1100px) { .run-grid { grid-template-columns: minmax(0, 1fr); } .run-head { order: -2; }
+  .side { position: static; order: -1; margin-bottom: 22px; } }
+@media (max-width: 760px) {
+  .work { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  aside.queue { border-right: 0; }
+  .work.reading aside.queue { display: none; }
+  .work:not(.reading) main.run { display: none; }
+  .back { display: inline-block; }
+  .passes { margin-left: 0; }
+  .overview h2 { font-size: 23px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <button class="brand" id="home" title="The pass's overview"><h1>Online-Mind2Web on agent-env</h1><span>every run, its frames and WebJudge's grade</span></button>
+    <nav class="passes" id="passes" aria-label="Passes"></nav>
+    <div class="links"><a id="dataset-link" href="#" target="_blank" rel="noopener">Dataset</a><a href="https://github.com/earakely-scale/agentenv-benchmarks" target="_blank" rel="noopener">Bundle</a></div>
+  </header>
+  <div class="work" id="work">
+    <aside class="queue" aria-label="Runs">
+      <div class="filters">
+        <select id="f-arm" aria-label="Arm"><option value="all">Both arms</option></select>
+        <select id="f-level" aria-label="Level"><option value="all">Every level</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
+        <select id="f-grade" aria-label="Grade"><option value="all">Any grade</option><option value="success">Success</option><option value="failure">Failure</option><option value="error">Judge error</option><option value="ungraded">Ungraded</option></select>
+        <input id="f-q" type="search" placeholder="Search tasks, sites, answers" aria-label="Search">
+      </div>
+      <div class="count" id="count"></div>
+      <div class="list" id="list"></div>
+    </aside>
+    <main class="run" id="run"><p class="empty">Loading the runs…</p></main>
+  </div>
+</div>
+<div class="lightbox" id="lightbox" hidden></div>
+<script>
+const params = new URLSearchParams(location.search);
+const DATA = params.get("data") || "https://huggingface.co/datasets/earakely-scale/OnlineMind2Web-AgentEnv/resolve/main/";
+const ARMS = { tools: "Claude Code · Playwright MCP", cdp: "Browser Use · CDP" };
+const LEVELS = ["easy", "medium", "hard"];
+const GRADES = { success: "Success", failure: "Failure", error: "Judge error", ungraded: "Ungraded" };
+const state = { index: null, pass: null, runs: [], byKey: {}, selected: null, failed: null };
+const $ = (id) => document.getElementById(id);
+const el = (tag, attrs = {}, ...kids) => {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "text") node.textContent = v; else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) node.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null) node.append(kid);
+  return node;
+};
+const key = (run) => `${run.arm}-${run.task_id}`;
+const url = (path) => new URL(path, DATA).href;
+const host = (site) => { try { return new URL(site).hostname.replace(/^www\./, ""); } catch { return site; } };
+const pct = (n, d) => d ? `${Math.round((100 * n) / d)}%` : "–";
+
+async function json(path) {
+  const response = await fetch(url(path), { cache: "no-cache" });
+  if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
+  return response.json();
+}
+
+function route() {
+  const [pass, run] = decodeURIComponent(location.hash.slice(1)).split("/");
+  return { pass: pass || null, run: run || null };
+}
+
+function go(pass, run) {
+  const hash = `#${encodeURIComponent(pass)}${run ? "/" + encodeURIComponent(run) : ""}`;
+  if (location.hash !== hash) location.hash = hash; else apply();
+}
+
+async function apply() {
+  if (!state.index) return;
+  const want = route();
+  const names = state.index.passes.map((p) => p.name);
+  const pass = names.includes(want.pass) ? want.pass : names[names.length - 1];
+  if (pass !== state.pass) {
+    state.pass = pass; state.runs = []; state.byKey = {}; state.selected = null; state.failed = null;
+    renderPasses(); renderList(); $("run").replaceChildren(el("p", { class: "empty", text: "Loading the runs…" }));
+    try {
+      const doc = await json(`viewer/${pass}.json`);
+      if (state.pass !== pass) return;
+      const order = Object.fromEntries(LEVELS.map((l, i) => [l, i]));
+      state.runs = doc.runs.sort((a, b) => (order[a.level] ?? 9) - (order[b.level] ?? 9)
+        || a.task.localeCompare(b.task) || a.arm.localeCompare(b.arm));
+      state.byKey = Object.fromEntries(state.runs.map((r) => [key(r), r]));
+      const arms = [...new Set(state.runs.map((r) => r.arm))];
+      $("f-arm").replaceChildren(el("option", { value: "all", text: "Both arms" }),
+        ...arms.map((a) => el("option", { value: a, text: `${a}: ${(ARMS[a] || a).split(" · ")[0]}` })));
+    } catch (e) {
+      state.failed = String(e.message || e);
+    }
+  }
+  state.selected = want.run && state.byKey[want.run] ? want.run : null;
+  $("work").classList.toggle("reading", !!state.selected);
+  renderList(); render();
+  const current = $("list").querySelector('[aria-current="true"]');
+  if (current) current.scrollIntoView({ block: "nearest" });
+}
+
+function renderPasses() {
+  $("passes").replaceChildren(...state.index.passes.map((p) => el("button", {
+    "aria-pressed": p.name === state.pass ? "true" : "false", title: p.note || p.name,
+    onclick: () => go(p.name, null), text: `${p.name} · ${p.runs}` })));
+}
+
+function visible() {
+  const arm = $("f-arm").value, level = $("f-level").value, grade = $("f-grade").value;
+  const q = $("f-q").value.trim().toLowerCase();
+  return state.runs.filter((r) => (arm === "all" || r.arm === arm) && (level === "all" || r.level === level)
+    && (grade === "all" || r.grade === grade)
+    && (!q || `${r.task} ${r.website} ${r.answer || ""} ${r.task_id}`.toLowerCase().includes(q)));
+}
+
+function renderList() {
+  const list = $("list");
+  const runs = visible();
+  $("count").textContent = state.runs.length ? `${runs.length} of ${state.runs.length} runs` : "";
+  list.replaceChildren();
+  if (!runs.length) {
+    list.append(el("p", { class: "empty", style: "padding: 20px 8px", text: state.runs.length ? "No run matches. Try another filter." : (state.failed ? "" : "Loading…") }));
+    return;
+  }
+  let level = null;
+  for (const run of runs) {
+    if (run.level !== level) { level = run.level; list.append(el("div", { class: "level-head", text: level })); }
+    list.append(el("button", { class: "item", "aria-current": key(run) === state.selected ? "true" : "false",
+      onclick: () => go(state.pass, key(run)) },
+      el("span", { class: `mark ${run.grade}`, title: GRADES[run.grade] || run.grade }),
+      el("span", {}, el("span", { class: "t", text: run.task }),
+        el("span", { class: "meta" }, el("span", { text: run.arm }), el("span", { text: host(run.website) }),
+          el("span", { text: `${run.actions} steps` })))));
+  }
+}
+
+function render() {
+  const main = $("run");
+  main.scrollTop = 0;
+  if (state.failed) {
+    main.replaceChildren(el("p", { class: "empty", text: `The runs didn't load (${state.failed}). Reload to try again.` }));
+  } else if (!state.runs.length) {
+    main.replaceChildren(el("p", { class: "empty", text: "Loading the runs…" }));
+  } else if (state.selected) {
+    main.replaceChildren(renderRun(state.byKey[state.selected]));
+  } else {
+    main.replaceChildren(renderOverview());
+  }
+}
+
+function renderOverview() {
+  const pass = state.index.passes.find((p) => p.name === state.pass);
+  const arms = [...new Set(state.runs.map((r) => r.arm))];
+  const cards = arms.map((arm) => {
+    const runs = state.runs.filter((r) => r.arm === arm);
+    const graded = runs.filter((r) => r.grade === "success" || r.grade === "failure");
+    const ok = graded.filter((r) => r.grade === "success").length;
+    const models = [...new Set(runs.map((r) => r.model).filter(Boolean))].join(", ");
+    const levels = LEVELS.map((level) => {
+      const at = graded.filter((r) => r.level === level);
+      const wins = at.filter((r) => r.grade === "success").length;
+      return el("div", { class: "lv" }, el("span", { class: "name", text: level }),
+        el("span", { class: "track", role: "img", "aria-label": `${level}: ${wins} of ${at.length} succeeded` },
+          el("i", { style: `width: ${at.length ? (100 * wins) / at.length : 0}%` })),
+        el("span", { class: "n", text: `${wins}/${at.length}` }));
+    });
+    const errors = runs.filter((r) => r.grade === "error").length, ungraded = runs.filter((r) => r.grade === "ungraded").length;
+    return el("section", { class: "arm" },
+      el("h3", { text: ARMS[arm] || arm }),
+      el("div", { class: "rate" }, pct(ok, graded.length), el("small", { text: `${ok} of ${graded.length} succeeded, by WebJudge` })),
+      el("div", { class: "levels" }, levels),
+      el("div", { class: "chips", style: "margin: 0" }, models ? el("span", { class: "chip", text: models }) : null,
+        errors ? el("span", { class: "chip", text: `${errors} judge error${errors === 1 ? "" : "s"}` }) : null,
+        ungraded ? el("span", { class: "chip", text: `${ungraded} ungraded` }) : null));
+  });
+  const judge = state.index.judge || {};
+  return el("div", { class: "overview" },
+    el("h2", { text: `Pass “${state.pass}”: ${state.runs.length} runs` }),
+    pass && pass.note ? el("p", { text: pass.note }) : null,
+    el("div", { class: "arms" }, cards),
+    el("div", { class: "facts" }, el("dl", {},
+      el("dt", { text: "Tasks" }), el("dd", {}, el("a", { href: `https://huggingface.co/datasets/${state.index.dataset}`, target: "_blank", rel: "noopener", text: state.index.dataset }), ` @ ${String(state.index.revision).slice(0, 8)}`),
+      el("dt", { text: "Judge" }), el("dd", { text: `WebJudge (${judge.code || "?"}) on ${judge.snapshot || judge.model || "?"}` }),
+      el("dt", { text: "Browser" }), el("dd", { text: "agent-env chromium, alone and headful, 1280×800, blank start tab" }),
+      el("dt", { text: "Built" }), el("dd", { text: state.index.generated || "?" }))),
+    el("p", { text: "Pick a run on the left to see its steps, the frame after each, the agent's answer and WebJudge's verdict. Sites that blocked agent-env's pre-flight sweep stay in, and their runs usually fail." }));
+}
+
+function frame(run, step, big) {
+  const sheet = run.sheets[step.sheet];
+  const img = el("img", { src: url(sheet.path), alt: "", loading: big ? "eager" : "lazy", decoding: "async",
+    width: run.width, height: sheet.height, style: `transform: translateY(-${(100 * step.y) / sheet.height}%)` });
+  return el("button", { class: "frame", style: `aspect-ratio: ${run.width} / ${step.h}`,
+    "aria-label": big ? "Close the enlarged frame" : "Enlarge this frame", onclick: big ? closeZoom : () => zoom(run, step) }, img);
+}
+
+function renderRun(run) {
+  const last = run.steps.length - 1;
+  const steps = run.steps.map((step, i) => el("section", { class: "step", id: `step-${i}` },
+    el("header", {}, el("span", { class: "n", text: i === last ? "LAST" : `STEP ${i}` }),
+      el("span", { class: "act", text: step.action }),
+      step.status ? el("span", { class: `pill ${step.status}`, text: step.status }) : null,
+      step.score != null ? el("span", { class: `pill ${step.score >= 3 ? "seen" : ""}`,
+        title: "WebJudge's relevance score for this frame; it shows the verdict prompt the frames scored 3 or more",
+        text: `relevance ${step.score}/5` }) : null),
+    step.url ? el("div", { class: "url", text: step.url }) : null,
+    frame(run, step, false)));
+  const head = el("div", { class: "task run-head" },
+    el("button", { class: "back", onclick: () => go(state.pass, null), text: "← All runs" }),
+    el("h2", { text: run.task }),
+    el("div", { class: "chips" },
+      el("span", { class: "chip" }, el("a", { href: run.website, target: "_blank", rel: "noopener", text: host(run.website) })),
+      el("span", { class: "chip", text: run.level }), el("span", { class: "chip", text: ARMS[run.arm] || run.arm }),
+      el("span", { class: "chip", text: `${run.actions} steps · people took ${run.reference_length}` }),
+      run.model ? el("span", { class: "chip", text: run.model }) : null));
+  const task = el("div", { class: "task" },
+    el("div", { class: "card answer" }, el("h3", { text: "The agent's answer" }), el("pre", { text: run.answer || "The agent gave no answer." })),
+    el("div", { class: "steps" }, steps));
+  const verdict = el("div", { class: "card" }, el("h3", { text: "WebJudge" }),
+    el("div", { class: `grade ${run.grade}` }, el("span", { class: `mark ${run.grade}` }), GRADES[run.grade] || run.grade),
+    run.verdict ? el("p", { class: "verdict", text: run.verdict }) : null);
+  const points = run.key_points ? el("div", { class: "card" }, el("h3", { text: "Key points WebJudge checked" }),
+    el("p", { class: "kp", text: run.key_points.trim() })) : null;
+  const ids = el("div", { class: "card" }, el("h3", { text: "This run" }), el("div", { class: "ids" },
+    el("div", {}, el("b", { text: "Task" }), run.task_id),
+    run.recording_id ? el("div", {}, el("b", { text: "Recording" }), run.recording_id) : null,
+    el("div", {}, el("b", { text: "Judge" }), run.judge_snapshot || "–"),
+    el("div", {}, el("b", { text: "Export" }), el("a", { href: url(run.export), text: run.export }), ` (${run.task_id}/)`)));
+  return el("div", { class: "run-grid" }, head, task, el("div", { class: "side" }, verdict, points, ids));
+}
+
+function zoom(run, step) {
+  const box = $("lightbox");
+  box.replaceChildren(frame(run, step, true));
+  box.hidden = false;
+  box.querySelector("button").focus();
+}
+function closeZoom() { $("lightbox").hidden = true; $("lightbox").replaceChildren(); }
+$("lightbox").addEventListener("click", (e) => { if (e.target === $("lightbox")) closeZoom(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("lightbox").hidden) { closeZoom(); return; }
+  if (e.target.matches("input, select") || !state.selected || !$("lightbox").hidden) return;
+  if (e.key === "j" || e.key === "k") {
+    const runs = visible(), at = runs.findIndex((r) => key(r) === state.selected);
+    const next = runs[at + (e.key === "j" ? 1 : -1)];
+    if (next) go(state.pass, key(next));
+  }
+});
+for (const id of ["f-arm", "f-level", "f-grade"]) $(id).addEventListener("change", renderList);
+$("f-q").addEventListener("input", renderList);
+$("home").addEventListener("click", () => state.pass && go(state.pass, null));
+window.addEventListener("hashchange", apply);
+
+(async function boot() {
+  $("dataset-link").href = DATA.replace(/\/resolve\/main\/?$/, "");
+  try {
+    state.index = await json("viewer/index.json");
+  } catch (e) {
+    $("run").replaceChildren(el("p", { class: "empty", text: `The dataset's index didn't load (${e.message || e}). Reload to try again.` }));
+    return;
+  }
+  renderPasses();
+  apply();
+})();
+</script>
+</body>
+</html>

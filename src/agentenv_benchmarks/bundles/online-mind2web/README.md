@@ -90,6 +90,22 @@ judge's key points, each screenshot's score and its verdict.
 WebJudge looks for evidence in the screenshots. A frame shows the page as it was on screen, as the benchmark's own
 screenshots do, so an answer read from a page's text without bringing it into view isn't verified there.
 
+## Publish
+
+`tools/online_mind2web_release.py` publishes graded runs to the Hugging Face Hub: a dataset of every run, and a Space
+that views it, step by step with the frame after each of the agent's actions, its answer and WebJudge's verdict.
+
+```bash
+python tools/online_mind2web_release.py build release --pass pass1=results/pass1 --note "pass1=What this pass is."
+python tools/online_mind2web_release.py upload release
+```
+
+Each `--pass` folder holds `tools/` and `cdp/`, each one `export` wrote and `judge` graded. `build` refuses any file
+that holds something shaped like a credential, the LiteLLM key in use or this machine's home folder. `upload` uploads
+the dataset and the Space (`space/online-mind2web/`) public, each in one commit. The published runs are at
+[`earakely-scale/OnlineMind2Web-AgentEnv`](https://huggingface.co/datasets/earakely-scale/OnlineMind2Web-AgentEnv),
+and the viewer is at [its Space](https://huggingface.co/spaces/earakely-scale/OnlineMind2Web-AgentEnv).
+
 ## Arms
 
 | Arm | Eval | Agent | Way in |
