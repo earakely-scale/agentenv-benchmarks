@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - run: pip install uv==0.13.1
+      - run: uv sync --group dev --locked
+      - name: Lint
+        run: uv run ruff check
+      - name: Test
+        run: uv run pytest
+      - name: Plan every bundle's evals as agent-env would run them, writing and running nothing
+        # A dry run checks a model endpoint is set but never calls it.
+        env:
+          LITELLM_BASE_URL: http://127.0.0.1:9
+          LITELLM_API_KEY: dry-run
+        run: |
+          bundles=$(uv run python -c "from importlib.metadata import entry_points; print(' '.join(p.name for p in entry_points(group='agent_env.bundles') if p.value.startswith('agentenv_benchmarks')))")
+          for bundle in $bundles; do
+            echo "::group::$bundle"
+            uv run agent-env run "$bundle" --dry-run > dry-run.log || { cat dry-run.log; exit 1; }
+            grep -E "^(Would run|Evals):" -A3 dry-run.log
+            echo "::endgroup::"
+          done

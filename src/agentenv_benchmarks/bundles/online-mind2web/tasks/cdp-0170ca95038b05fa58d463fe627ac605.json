@@ -1,0 +1,9 @@
+[
+  {"id": "browser", "type": "deploy_env", "env_id": "chromium", "env_params": {"app_settings": {"chromium": {"start_urls": ["about:blank"], "window": {"width": 1280, "height": 800}, "dialogs": "accept", "geolocation": "deny", "notifications": "deny", "locale": "en-US", "time_zone": "UTC"}}}},
+  {"id": "setup", "type": "run_code", "env_id": "chromium", "script_artifact_id": "record_setup", "result_id": "setup", "args": {"dataset": "osunlp/Online-Mind2Web", "revision": "eacad896a84dc5b65e29b0b06e4699ab0544d701", "sha256": "7dedf381531d423dc0fc48d21dc1d425655dd75f38b10211a880fa09102f257f", "task_id": "0170ca95038b05fa58d463fe627ac605", "website": "https://www.gov.uk/", "task": "Check if a visa is required to work in the UK for longer than 6 months in Healthcare as an American citizen.", "level": "hard", "reference_length": 12, "arm": "cdp"}, "depends_on": ["browser"]},
+  {"id": "record", "type": "start_computer_recording", "env_id": "chromium", "name": "run", "depends_on": ["browser"]},
+  {"id": "agent", "type": "deploy_agent", "a2a_agent_id": "browser-use", "env_ids": []},
+  {"id": "connect", "type": "browser_connect_cdp", "env_id": "chromium", "depends_on": ["browser", "agent"]},
+  {"id": "task", "type": "prompt_agent", "prompt_id": "answer", "prompt": "Go to https://www.gov.uk/ and check if a visa is required to work in the UK for longer than 6 months in Healthcare as an American citizen.", "timeout_seconds": 1800, "depends_on": ["agent", "connect", "setup", "record"]},
+  {"id": "end", "type": "end_computer_recording", "name": "run", "depends_on": ["task"]}
+]

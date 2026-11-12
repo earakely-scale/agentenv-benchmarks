@@ -1,0 +1,9 @@
+[
+  {"id": "browser", "type": "deploy_env", "env_id": "chromium", "env_params": {"app_settings": {"chromium": {"start_urls": ["about:blank"], "window": {"width": 1280, "height": 800}, "dialogs": "accept", "geolocation": "deny", "notifications": "deny", "locale": "en-US", "time_zone": "UTC"}}}},
+  {"id": "setup", "type": "run_code", "env_id": "chromium", "script_artifact_id": "record_setup", "result_id": "setup", "args": {"dataset": "osunlp/Online-Mind2Web", "revision": "eacad896a84dc5b65e29b0b06e4699ab0544d701", "sha256": "7dedf381531d423dc0fc48d21dc1d425655dd75f38b10211a880fa09102f257f", "task_id": "d8e2a81fa621ce4737e5ea85671b630e_110325", "website": "https://ziprecruiter.com/", "task": "Search for in-person, full-time jobs within 10 miles of ZIP code 14810 that allow Quick Apply.", "level": "hard", "reference_length": 12, "arm": "cdp"}, "depends_on": ["browser"]},
+  {"id": "record", "type": "start_computer_recording", "env_id": "chromium", "name": "run", "depends_on": ["browser"]},
+  {"id": "agent", "type": "deploy_agent", "a2a_agent_id": "browser-use", "env_ids": []},
+  {"id": "connect", "type": "browser_connect_cdp", "env_id": "chromium", "depends_on": ["browser", "agent"]},
+  {"id": "task", "type": "prompt_agent", "prompt_id": "answer", "prompt": "Go to https://ziprecruiter.com/ and search for in-person, full-time jobs within 10 miles of ZIP code 14810 that allow Quick Apply.", "timeout_seconds": 1800, "depends_on": ["agent", "connect", "setup", "record"]},
+  {"id": "end", "type": "end_computer_recording", "name": "run", "depends_on": ["task"]}
+]

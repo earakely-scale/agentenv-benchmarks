@@ -1,0 +1,17 @@
+agentenv-benchmarks
+Copyright 2026 The agentenv-benchmarks authors.
+
+This repository's code is licensed under the Apache License, Version 2.0 (LICENSE).
+
+The task text, start websites, levels and reference lengths in
+src/agentenv_benchmarks/bundles/online-mind2web/tasks/ are derived from Online-Mind2Web
+(https://huggingface.co/datasets/osunlp/Online-Mind2Web, revision
+eacad896a84dc5b65e29b0b06e4699ab0544d701), by the OSU NLP Group, licensed under the
+Creative Commons Attribution 4.0 International License (CC BY 4.0,
+https://creativecommons.org/licenses/by/4.0/). Each task is wrapped in agent-env steps, which keep its
+text unchanged, and its prompt is "Go to {website} and {task}", with the task's first word lowercased.
+
+Online-Mind2Web's authors ask that both of these be cited when using or referencing the data:
+- Xue et al., "An Illusion of Progress? Assessing the Current State of Web Agents" (2025),
+  https://arxiv.org/abs/2504.01382
+- Deng et al., "Mind2Web: Towards a Generalist Agent for the Web", NeurIPS 2023 Datasets and Benchmarks.

@@ -1,0 +1,36 @@
+[project]
+name = "agentenv-benchmarks"
+version = "0.1.0"
+description = "Public agent benchmarks as agent-env bundles, starting with Online-Mind2Web."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.11.4"
+dependencies = ["agentenv-framework>=0.9.1510"]
+
+[project.optional-dependencies]
+# Only to regenerate a benchmark's tasks from its source dataset.
+generate = ["huggingface_hub>=0.30"]
+
+[project.entry-points."agent_env.bundles"]
+online-mind2web = "agentenv_benchmarks.bundles"
+
+[project.urls]
+Repository = "https://github.com/earakely-scale/agentenv-benchmarks"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "huggingface_hub>=0.30"]
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentenv_benchmarks"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
