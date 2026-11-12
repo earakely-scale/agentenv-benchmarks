@@ -25,12 +25,13 @@ The agents need a model endpoint (`[model]` in agent-env's config). A run withou
 | --- | --- |
 | `browser` | Deploys agent-env's `chromium` alone, headful, set once for every arm: a 1280×800 window, a blank start tab, dialogs accepted, location and notifications denied, en-US, UTC. |
 | `setup` | Records, in the run's own record (`script_results.setup`), the dataset row and revision the task came from and the browser as deployed: its Chromium build, `mode`, clock and window. |
-| `record` / `end` | Records the browser's screen for the whole run. |
+| `record` / `end` | Records a video of the browser's screen for the whole run, for review. |
+| `frames` / `end_frames` | Records the browser's frames: one at the start, one after each burst of the agent's actions, of the tab it acted in, and one at the end, each keyed to the browser's action log. Grading reads these. A missing frame fails the run as an infrastructure failure. |
 | `agent` | Deploys the arm's agent. On `cdp`, `connect` hands Browser Use a CDP address to the browser, hiding its tools. On `tools`, Claude Code gets the browser's MCP, with only Playwright MCP's `browser_*` tools shown. |
 | `task` | Prompts the agent with `Go to {website} and {task}`. Its final answer is the prompt's response, `answer`. |
 
 Grading (WebJudge), the result export and results per arm come later; until then a run records each agent's answer,
-trajectory, screen recording and the browser's action log.
+trajectory, screen video, frames and the browser's action log.
 
 ## Arms
 

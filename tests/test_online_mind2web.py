@@ -71,7 +71,17 @@ def test_each_arm_reaches_the_browser_its_own_way_and_is_asked_the_same_prompt()
     assert by_id["cdp"]["task"]["prompt"] == by_id["tools"]["task"]["prompt"] == \
         "Go to https://www.apple.com/ and find technical specs for the latest Macbook Air on Apple."
     for steps in (by_id["cdp"], by_id["tools"]):
-        assert {"setup", "record"} <= set(steps["task"]["depends_on"]) and steps["end"]["depends_on"] == ["task"]
+        assert {"setup", "record", "frames"} <= set(steps["task"]["depends_on"])
+        assert steps["end"]["depends_on"] == steps["end_frames"]["depends_on"] == ["task"]
+
+
+def test_each_run_records_frames_for_grading_and_a_video_of_the_screen():
+    for steps in _committed().values():
+        by_id = {step["id"]: step for step in steps}
+        assert (by_id["frames"]["type"], by_id["frames"]["name"], by_id["end_frames"]["name"]) == (
+            "start_browser_recording", "frames", "frames")
+        assert "fail_task_on_error" not in by_id["frames"] and "fail_task_on_error" not in by_id["end_frames"]
+        assert (by_id["record"]["type"], by_id["end"]["type"]) == ("start_computer_recording", "end_computer_recording")
 
 
 @pytest.mark.parametrize("task, prompted", [

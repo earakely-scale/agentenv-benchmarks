@@ -1,6 +1,7 @@
 """The Online-Mind2Web task template: every arm on the same browser, chromium alone and headful, set once here, its
-agent given the website in the prompt from a blank tab, its run recorded, and its run's record naming the dataset row
-and revision it came from and the browser as deployed."""
+agent given the website in the prompt from a blank tab, its run recorded as frames after each burst of the agent's
+actions, which grading reads, and as a video of the screen, and its run's record naming the dataset row and revision it
+came from and the browser as deployed."""
 from __future__ import annotations
 
 import json
@@ -47,6 +48,8 @@ SAMPLE = ("d71be72aa25c3eab8eea47a0e60382e2", "b7258ee05d75e6c50673a59914db412e_
 PROMPT_ID = "answer"
 #: The run_code result the run's own record is kept under.
 SETUP_ID = "setup"
+#: The browser recording a run's frames are under, in its record's ``browser_recordings``; a frame missing fails it.
+FRAMES = "frames"
 
 
 def name(task: Task, arm: str) -> str:
@@ -72,6 +75,7 @@ def steps(task: Task, arm: str) -> list[dict]:
              "result_id": SETUP_ID, "args": record, "depends_on": ["browser"]}
     recording = {"id": "record", "type": "start_computer_recording", "env_id": ENV, "name": "run",
                  "depends_on": ["browser"]}
+    frames = {"id": FRAMES, "type": "start_browser_recording", "env_id": ENV, "name": FRAMES, "depends_on": ["browser"]}
     if arm == "cdp":
         ways_in = [{"id": "agent", "type": "deploy_agent", "a2a_agent_id": ARMS[arm], "env_ids": []},
                    {"id": "connect", "type": "browser_connect_cdp", "env_id": ENV, "depends_on": ["browser", "agent"]}]
@@ -81,11 +85,12 @@ def steps(task: Task, arm: str) -> list[dict]:
                     "tools": ["*"], "depends_on": ["browser"]},
                    {"id": "show", "type": "modify_env_tool_access", "env_id": ENV, "action": "enable", "role": ROLE,
                     "tools": list(BROWSER_TOOLS), "depends_on": ["hide"]}]
-    ready = [step["id"] for step in ways_in if step["id"] != "hide"] + [SETUP_ID, "record"]
+    ready = [step["id"] for step in ways_in if step["id"] != "hide"] + [SETUP_ID, "record", FRAMES]
     ask = {"id": "task", "type": "prompt_agent", "prompt_id": PROMPT_ID, "prompt": prompt(task),
            "timeout_seconds": PROMPT_TIMEOUT_S, "depends_on": ready}
     end = {"id": "end", "type": "end_computer_recording", "name": "run", "depends_on": ["task"]}
-    return [browser, setup, recording, *ways_in, ask, end]
+    end_frames = {"id": f"end_{FRAMES}", "type": "end_browser_recording", "name": FRAMES, "depends_on": ["task"]}
+    return [browser, setup, recording, frames, *ways_in, ask, end, end_frames]
 
 
 def render(steps: list[dict]) -> str:
