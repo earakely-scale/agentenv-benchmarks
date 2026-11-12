@@ -101,6 +101,21 @@ def test_a_cdp_run_reads_its_input_events_as_the_actions_they_make():
         "SCROLL page -> scroll up by 400px | SUCCESS"]
 
 
+def test_an_action_still_going_when_the_run_ended_is_said_to_be_and_counts_toward_no_status():
+    log = [
+        _line(3, via="mcp", who="default", tool="browser_navigate", args={"url": "https://shop.test/"}),
+        _line(4, via="mcp", who="default", tool="browser_click", args={"target": "e5", "element": "Desks"},
+              unfinished=True),
+        _line(5, via="mcp", who="default", tool="browser_type", args={"target": "e3", "element": "Search", "text": "x"},
+              ok=None, unfinished=True),
+    ]
+    frames = [_frame(0, "first"), _frame(1, "action", [3, 4]), _frame(2, "action", [5]), _frame(3, "last")]
+
+    assert [(action, status) for _, action, status in export.steps(_run(frames, log).manifest, log)] == [
+        ("page -> NAVIGATE -> go to https://shop.test/; then click Desks (unfinished at the end) | SUCCESS", "SUCCESS"),
+        ("TYPE [aria-ref='e3'] -> type 'x' into Search (unfinished at the end)", None)]
+
+
 def test_a_run_without_an_answer_completes_saying_so(tmp_path):
     folder = export.write(_tools_run(answer=None), tmp_path)
     result = json.loads((folder / v2.RESULT).read_text())

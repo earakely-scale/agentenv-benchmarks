@@ -63,6 +63,8 @@ class _Item:
     target: str
     description: str
     ok: bool = True
+    #: Still going when the run ended, as the recording's log marks such an action.
+    unfinished: bool = False
 
 
 class NotExportable(Exception):
@@ -188,6 +190,7 @@ def _item(key: tuple[str, int], entries: dict[int, dict]) -> _Item | None:
     item = _from_call(entry) if key[0] == "mcp" else _from_command(entry)
     if item is not None:
         item.ok = entry.get("ok", True) is not False
+        item.unfinished = bool(entry.get("unfinished"))
     return item
 
 
@@ -317,7 +320,7 @@ def _merged(items: list[_Item]) -> list[_Item]:
             previous.description, previous.ok = previous.description[:-1] + item.description[6:], previous.ok and item.ok
         elif same := next((m for m in merged if (m.verb, m.target, m.description) ==
                            (item.verb, item.target, item.description)), None):
-            same.ok = same.ok and item.ok
+            same.ok, same.unfinished = same.ok and item.ok, same.unfinished and item.unfinished
         else:
             merged.append(item)
     return merged or [_Item(WAIT, "page", "wait")]
@@ -330,16 +333,19 @@ def _typed(item: _Item) -> bool:
 
 
 def _action(items: list[_Item]) -> tuple[str, str | None]:
-    """The step's action, its first action's verb and target and what it and the rest did, and its status: none for a
-    step that only observes, else FAILED when any of its actions failed."""
+    """The step's action, its first action's verb and target and what it and the rest did, an action still going when
+    the run ended said to be, and its status, from its finished actions: none for a step that only observes or whose
+    actions none finished, else FAILED when any of them failed."""
     acting = [item for item in items if item.verb != WAIT]
     primary = (acting or items)[0]
-    description = "; then ".join([primary.description, *(item.description for item in items if item is not primary)])
+    described = [f"{item.description} (unfinished at the end)" if item.unfinished else item.description
+                 for item in [primary, *(item for item in items if item is not primary)]]
     head = f"{primary.target} -> {primary.verb}" if primary.verb in PAGE_VERBS else f"{primary.verb} {primary.target}"
-    if not acting:
-        return f"{head} -> {description}", None
-    status = "SUCCESS" if all(item.ok for item in acting) else "FAILED"
-    return f"{head} -> {description} | {status}", status
+    finished = [item for item in acting if not item.unfinished]
+    if not finished:
+        return f"{head} -> {'; then '.join(described)}", None
+    status = "SUCCESS" if all(item.ok for item in finished) else "FAILED"
+    return f"{head} -> {'; then '.join(described)} | {status}", status
 
 
 def main(argv: list[str]) -> None:
