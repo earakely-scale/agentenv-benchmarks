@@ -13,11 +13,16 @@ on the live site it names.
 agent-env run online-mind2web --eval sample           # three tasks, one per level, on each arm
 agent-env run online-mind2web --eval tools            # all 300 with Claude Code and Playwright MCP
 agent-env run online-mind2web --eval cdp              # all 300 with Browser Use over CDP
+agent-env run online-mind2web --eval agreement        # the 30 tasks, on both arms, WebJudge is checked on
 agent-env run online-mind2web --eval tools --agent codex
 agent-env run online-mind2web --task tools-d71be72aa25c3eab8eea47a0e60382e2
 ```
 
 The agents need a model endpoint (`[model]` in agent-env's config). A run without `--eval` or `--task` runs every eval.
+
+`agreement` is the sample WebJudge's grades are checked against human labels on: 30 tasks, each on both arms, drawn by
+level in the dataset's proportions (8 easy, 14 medium, 8 hard) with a fixed seed, none on a site the pre-flight sweep
+saw block agent-env.
 
 ## What every task does
 

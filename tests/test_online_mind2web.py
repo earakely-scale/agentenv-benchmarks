@@ -100,11 +100,27 @@ def test_an_eval_per_arm_runs_its_300_tasks_and_the_sample_one_per_level_on_each
     evals = {path.stem: tomllib.loads(path.read_text())["tasks"] for path in (BUNDLE / "evals").glob("*.toml")}
     levels = {_recorded(steps)["task_id"]: _recorded(steps)["level"] for steps in _committed().values()}
 
-    assert set(evals) == {*template.ARMS, "sample"}
+    assert set(evals) == {*template.ARMS, "sample", "agreement"}
     for arm in template.ARMS:
         assert sorted(evals[arm]) == sorted(path.stem for path in TASKS if path.stem.startswith(f"{arm}-"))
     assert evals["sample"] == [f"{arm}-{task_id}" for arm in template.ARMS for task_id in template.SAMPLE]
     assert sorted(levels[task_id] for task_id in template.SAMPLE) == sorted(dataset.LEVELS)
+
+
+def test_the_agreement_sample_is_30_tasks_on_both_arms_by_level_with_none_on_a_blocked_site():
+    evals = {path.stem: tomllib.loads(path.read_text())["tasks"] for path in (BUNDLE / "evals").glob("*.toml")}
+    tasks = {path.stem: _task(_recorded(steps)) for path, steps in zip(TASKS, _committed().values())}
+    sampled = [tasks[name] for name in evals["agreement"]]
+    by_arm = {arm: [t.task_id for t, name in zip(sampled, evals["agreement"]) if name.startswith(f"{arm}-")]
+              for arm in template.ARMS}
+    picked = [tasks[f"cdp-{task_id}"] for task_id in by_arm["cdp"]]
+
+    assert len(evals["agreement"]) == 60 and by_arm["cdp"] == by_arm["tools"] and len(set(by_arm["cdp"])) == 30
+    assert [t.level for t in picked].count("easy") == 8 and [t.level for t in picked].count("medium") == 14
+    assert not any(template.blocked(t) for t in picked)
+    every = {tasks[name].task_id: tasks[name] for name in tasks if name.startswith("cdp-")}
+    assert sum(template.blocked(t) for t in every.values()) == 21
+    assert [t.task_id for t in template.agreement(list(every.values()))] == by_arm["cdp"]
 
 
 def test_writing_from_the_dataset_writes_every_task_and_eval_and_drops_what_it_no_longer_makes(tmp_path):

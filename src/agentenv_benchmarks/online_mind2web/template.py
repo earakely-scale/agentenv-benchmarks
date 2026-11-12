@@ -4,8 +4,10 @@ actions, which grading reads, and as a video of the screen, and its run's record
 came from and the browser as deployed."""
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from . import dataset
 from .dataset import Task
@@ -44,6 +46,13 @@ ROLE = "default"
 #: pre-flight sweep of the start sites saw load from both an AWS VM and Modal.
 SAMPLE = ("d71be72aa25c3eab8eea47a0e60382e2", "b7258ee05d75e6c50673a59914db412e_110325",
           "6ebde509dca8f15c0fa1bd74f071e8d6")
+#: The sites agent-env's pre-flight sweep of the start sites (M8.45) saw block it from both an AWS VM and Modal. Their
+#: tasks stay in the benchmark, where a run there fails, but not in a sample meant to test the judge.
+BLOCKED_SITES = ("apartments.com", "petfinder.com", "imdb.com", "backcountry.com", "microcenter.com",
+                 "boardgamegeek.com", "marriott.com", "uniqlo.com", "ticketmaster.com")
+#: The sample WebJudge's grades are checked against the team's labels on (M8.48): this many tasks, each on every arm,
+#: by level in the proportions the dataset has them, none on a blocked site, chosen by the seed.
+AGREEMENT_TASKS, AGREEMENT_SEED = 30, "online-mind2web-agreement-1"
 #: The prompt's own id, which the answer is found under in a run's record.
 PROMPT_ID = "answer"
 #: The run_code result the run's own record is kept under.
@@ -93,14 +102,38 @@ def steps(task: Task, arm: str) -> list[dict]:
     return [browser, setup, recording, frames, *ways_in, ask, end, end_frames]
 
 
+def blocked(task: Task) -> bool:
+    """Whether ``task`` starts on a site the pre-flight sweep saw block agent-env."""
+    host = urlsplit(task.website).hostname or ""
+    return any(host == site or host.endswith(f".{site}") for site in BLOCKED_SITES)
+
+
+def agreement(tasks: list[Task]) -> list[Task]:
+    """The agreement sample's tasks: ``AGREEMENT_TASKS`` of those on no blocked site, each level's share of them as
+    the dataset's (largest remainders rounding), each level's taken in the order the seed gives them."""
+    kept = [task for task in tasks if not blocked(task)]
+    by_level = {level: sorted((task for task in kept if task.level == level), key=_drawn) for level in dataset.LEVELS}
+    shares = {level: AGREEMENT_TASKS * len(by_level[level]) / len(kept) for level in dataset.LEVELS}
+    counts = {level: int(share) for level, share in shares.items()}
+    for level in sorted(shares, key=lambda level: shares[level] - counts[level], reverse=True)[
+            :AGREEMENT_TASKS - sum(counts.values())]:
+        counts[level] += 1
+    return [task for level in dataset.LEVELS for task in by_level[level][:counts[level]]]
+
+
+def _drawn(task: Task) -> str:
+    return hashlib.sha256(f"{AGREEMENT_SEED}:{task.task_id}".encode()).hexdigest()
+
+
 def render(steps: list[dict]) -> str:
     """A task file as agent-env's shipped tasks are written: a step a line."""
     return "[\n" + ",\n".join(f"  {json.dumps(step, ensure_ascii=False)}" for step in steps) + "\n]\n"
 
 
 def write(tasks: list[Task], bundle: Path) -> list[str]:
-    """Every task on every arm written into ``bundle``'s ``tasks/``, with an eval per arm and a sample eval, and any
-    task file this template no longer makes removed. The names written."""
+    """Every task on every arm written into ``bundle``'s ``tasks/``, with an eval per arm, a sample eval and, given
+    the whole dataset, the agreement sample's, and any task file this template no longer makes removed. The names
+    written."""
     folder = bundle / "tasks"
     folder.mkdir(parents=True, exist_ok=True)
     written = []
@@ -114,6 +147,8 @@ def write(tasks: list[Task], bundle: Path) -> list[str]:
     by_id = {task.task_id: task for task in tasks}
     evals = {arm: [name(task, arm) for task in tasks] for arm in ARMS}
     evals["sample"] = [name(by_id[task_id], arm) for arm in ARMS for task_id in SAMPLE]
+    if len(tasks) >= AGREEMENT_TASKS:
+        evals["agreement"] = [name(task, arm) for arm in ARMS for task in agreement(tasks)]
     (bundle / "evals").mkdir(exist_ok=True)
     for eval_name, names in evals.items():
         (bundle / "evals" / f"{eval_name}.toml").write_text(

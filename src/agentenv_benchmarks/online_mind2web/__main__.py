@@ -22,7 +22,7 @@ def main(argv: list[str]) -> None:
     if (found := hashlib.sha256(path.read_bytes()).hexdigest()) != dataset.SHA256:
         raise SystemExit(f"{path} has sha256 {found}, not {dataset.REPO}@{dataset.REVISION}'s {dataset.SHA256}")
     written = template.write(dataset.tasks(path), BUNDLE)
-    print(f"wrote {len(written)} tasks and {len(template.ARMS) + 1} evals into {BUNDLE}, "
+    print(f"wrote {len(written)} tasks and {len(list((BUNDLE / 'evals').glob('*.toml')))} evals into {BUNDLE}, "
           f"from {dataset.REPO}@{dataset.REVISION[:8]}")
 
 
