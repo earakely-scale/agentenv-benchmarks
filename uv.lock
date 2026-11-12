@@ -30,6 +30,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "agentenv-framework" },
+    { name = "jsonschema" },
 ]
 
 [package.optional-dependencies]
@@ -48,6 +49,7 @@ dev = [
 requires-dist = [
     { name = "agentenv-framework", specifier = ">=0.9.1510" },
     { name = "huggingface-hub", marker = "extra == 'generate'", specifier = ">=0.30" },
+    { name = "jsonschema", specifier = ">=4.18" },
 ]
 provides-extras = ["generate"]
 

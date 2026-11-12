@@ -30,8 +30,34 @@ The agents need a model endpoint (`[model]` in agent-env's config). A run withou
 | `agent` | Deploys the arm's agent. On `cdp`, `connect` hands Browser Use a CDP address to the browser, hiding its tools. On `tools`, Claude Code gets the browser's MCP, with only Playwright MCP's `browser_*` tools shown. |
 | `task` | Prompts the agent with `Go to {website} and {task}`. Its final answer is the prompt's response, `answer`. |
 
-Grading (WebJudge), the result export and results per arm come later; until then a run records each agent's answer,
-trajectory, screen video, frames and the browser's action log.
+Grading (WebJudge) and results per arm come later; until then a run records each agent's answer, trajectory, screen
+video, frames and the browser's action log.
+
+## Export
+
+`agentenv_benchmarks.online_mind2web.export` writes runs as Online-Mind2Web's
+[v2 result format](https://github.com/OSU-NLP-Group/Online-Mind2Web/tree/main/data/schema_v2), the folders WebJudge
+grades, by the instance ids `agent-env run` prints:
+
+```bash
+python -m agentenv_benchmarks.online_mind2web.export results/tools-1 INSTANCE_ID...
+```
+
+Each run becomes `results/tools-1/<task_id>/`: `result.json`, its frames in `trajectory/`, and `agentenv.json`, which
+names the run, its arm, its model and the dataset revision it ran. Export each run of a task into a folder of its own.
+
+The steps come from the browser's record of the run, not from the agent's account of it:
+
+- A step is a frame the browser took after a burst of the agent's actions, its action in the benchmark's grammar A.
+  On `tools` that's the agent's `browser_*` calls (`browser_click` is `CLICK [aria-ref='e12'] -> click Desks link |
+  SUCCESS`); on `cdp` it's the agent's CDP commands (a mouse press is `CLICK coords(x, y)`, inserted text `TYPE`).
+- A `browser_*` call over several bursts is one step, with the frame it ended on. Reads, such as `browser_snapshot` or
+  a page script, are `WAIT` steps.
+- The start frame, a blank tab, isn't a step. The last frame is the `TASK_COMPLETE` step, with the agent's answer.
+- Thoughts are null: WebJudge's Online-Mind2Web mode reads the actions and the screenshots, not the thoughts.
+
+Every exported run is checked against the schema (`schema_v2.json`, copied from the benchmark's repository) and the
+rules its README adds. A run whose frames recording didn't end complete isn't exported.
 
 ## Arms
 
