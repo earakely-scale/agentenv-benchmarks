@@ -30,8 +30,8 @@ The agents need a model endpoint (`[model]` in agent-env's config). A run withou
 | `agent` | Deploys the arm's agent. On `cdp`, `connect` hands Browser Use a CDP address to the browser, hiding its tools. On `tools`, Claude Code gets the browser's MCP, with only Playwright MCP's `browser_*` tools shown. |
 | `task` | Prompts the agent with `Go to {website} and {task}`. Its final answer is the prompt's response, `answer`. |
 
-Grading (WebJudge) and results per arm come later; until then a run records each agent's answer, trajectory, screen
-video, frames and the browser's action log.
+A run records each agent's answer, trajectory, screen video, frames and the browser's action log; the exporter turns
+it into the benchmark's own result format, and WebJudge grades that. Results per arm come later.
 
 ## Export
 
@@ -58,6 +58,32 @@ The steps come from the browser's record of the run, not from the agent's accoun
 
 Every exported run is checked against the schema (`schema_v2.json`, copied from the benchmark's repository) and the
 rules its README adds. A run whose frames recording didn't end complete isn't exported.
+
+## Grade
+
+`agentenv_benchmarks.online_mind2web.judge` grades exported runs with WebJudge, the benchmark's own judge:
+
+```bash
+LITELLM_BASE_URL=... LITELLM_API_KEY=... python -m agentenv_benchmarks.online_mind2web.judge results/tools-1
+```
+
+It writes `results/tools-1/webjudge.jsonl`, one line per run: its grade (`success`, `failure` or `error`), the
+judge's key points, each screenshot's score and its verdict.
+
+- **The code:** WebJudge's own, in `webjudge/`, copied unchanged from the benchmark's repository at commit `1a8db931`.
+  It runs in its `WebJudge_Online_Mind2Web_eval` mode with a score threshold of 3, as the benchmark's `eval.sh` does,
+  and reads a run as its `run.py` reads a v2 result.
+- **The model:** GPT-6 Luna at its default reasoning effort, the backbone WebJudge's authors recommend since o4-mini
+  was retired. Every answer must come from the snapshot `gpt-6-luna-2026-09-22`, so one set of grades never mixes
+  snapshots. `--model` and `--snapshot` choose another.
+- **One change to its calls:** each answer may take up to 8,192 tokens, reasoning included, instead of the 512 its code
+  asks for. That limit was written for models that don't reason, and it leaves a reasoning model's verdict empty.
+- **Every grade names** the judge's code, mode and model, and the snapshot that answered each call.
+- **A judge error isn't a failure:** a call that fails, a screenshot left unscored or a verdict that's missing grades
+  the run `error`, an infrastructure failure. WebJudge's own code would read each of those as a failure.
+
+WebJudge looks for evidence in the screenshots. A frame shows the page as it was on screen, as the benchmark's own
+screenshots do, so an answer read from a page's text without bringing it into view isn't verified there.
 
 ## Arms
 

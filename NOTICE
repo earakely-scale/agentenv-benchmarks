@@ -11,9 +11,11 @@ Creative Commons Attribution 4.0 International License (CC BY 4.0,
 https://creativecommons.org/licenses/by/4.0/). Each task is wrapped in agent-env steps, which keep its
 text unchanged, and its prompt is "Go to {website} and {task}", with the task's first word lowercased.
 
-src/agentenv_benchmarks/online_mind2web/schema_v2.json is Online-Mind2Web's v2 result schema, copied
-unchanged from https://github.com/OSU-NLP-Group/Online-Mind2Web at commit
-1a8db93168d5d7870402b7f453160e1c557153c8 (data/schema_v2/schema_v2.json), under its MIT License:
+src/agentenv_benchmarks/online_mind2web/schema_v2.json, Online-Mind2Web's v2 result schema, and
+src/agentenv_benchmarks/online_mind2web/webjudge/, its WebJudge code (src/utils.py and
+src/methods/webjudge_online_mind2web.py), are copied unchanged from
+https://github.com/OSU-NLP-Group/Online-Mind2Web at commit 1a8db93168d5d7870402b7f453160e1c557153c8,
+under its MIT License:
 
   Copyright (c) 2025 OSU Natural Language Processing
 

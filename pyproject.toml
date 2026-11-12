@@ -6,7 +6,7 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.11.4"
-dependencies = ["agentenv-framework>=0.9.1517", "jsonschema>=4.18"]
+dependencies = ["agentenv-framework>=0.9.1517", "jsonschema>=4.18", "backoff>=2.2", "openai>=1.68", "Pillow>=11"]
 
 [project.optional-dependencies]
 # Only to regenerate a benchmark's tasks from its source dataset.
@@ -31,6 +31,8 @@ packages = ["src/agentenv_benchmarks"]
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+# WebJudge's own code, copied unchanged from Online-Mind2Web.
+extend-exclude = ["src/agentenv_benchmarks/online_mind2web/webjudge"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
