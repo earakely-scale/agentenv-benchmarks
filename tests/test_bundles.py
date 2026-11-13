@@ -15,7 +15,7 @@ BUNDLES = sorted(path for path in Path(agentenv_benchmarks.bundles.__file__).par
 
 
 def test_there_is_a_bundle():
-    assert [path.name for path in BUNDLES] == ["online-mind2web"]
+    assert [path.name for path in BUNDLES] == ["online-mind2web", "webarena-verified"]
 
 
 @pytest.mark.parametrize("bundle", BUNDLES, ids=lambda path: path.name)

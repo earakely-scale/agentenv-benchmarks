@@ -1,25 +1,27 @@
 [project]
 name = "agentenv-benchmarks"
 version = "0.1.0"
-description = "Public agent benchmarks as agent-env bundles, starting with Online-Mind2Web."
+description = "Public agent benchmarks as agent-env bundles: Online-Mind2Web and WebArena-Verified."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.11.4"
-dependencies = ["agentenv-framework>=0.9.1526", "jsonschema>=4.18", "backoff>=2.2", "openai>=1.68", "Pillow>=11"]
+dependencies = ["agentenv-framework>=0.9.1532", "jsonschema>=4.18", "backoff>=2.2", "openai>=1.68", "Pillow>=11"]
 
 [project.optional-dependencies]
 # Only to regenerate a benchmark's tasks from its source dataset.
-generate = ["huggingface_hub>=0.30"]
+# Online-Mind2Web reads its dataset through the Hugging Face Hub; WebArena-Verified renders its prompt with Jinja.
+generate = ["huggingface_hub>=0.30", "jinja2>=3.1"]
 
 [project.entry-points."agent_env.bundles"]
 online-mind2web = "agentenv_benchmarks.bundles"
+webarena-verified = "agentenv_benchmarks.bundles"
 
 [project.urls]
 Repository = "https://github.com/earakely-scale/agentenv-benchmarks"
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6", "huggingface_hub>=0.30"]
+dev = ["pytest>=8", "ruff>=0.6", "huggingface_hub>=0.30", "jinja2>=3.1"]
 
 [build-system]
 requires = ["hatchling>=1.26"]
@@ -32,7 +34,8 @@ packages = ["src/agentenv_benchmarks"]
 line-length = 120
 target-version = "py311"
 # WebJudge's own code, copied unchanged from Online-Mind2Web.
-extend-exclude = ["src/agentenv_benchmarks/online_mind2web/webjudge"]
+# WebArena-Verified's answer extractor, copied unchanged from its release.
+extend-exclude = ["src/agentenv_benchmarks/online_mind2web/webjudge", "src/agentenv_benchmarks/webarena_verified/upstream"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

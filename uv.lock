@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11.4"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -39,20 +39,23 @@ dependencies = [
 [package.optional-dependencies]
 generate = [
     { name = "huggingface-hub" },
+    { name = "jinja2" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "huggingface-hub" },
+    { name = "jinja2" },
     { name = "pytest" },
     { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "agentenv-framework", specifier = ">=0.9.1526" },
+    { name = "agentenv-framework", specifier = ">=0.9.1532" },
     { name = "backoff", specifier = ">=2.2" },
     { name = "huggingface-hub", marker = "extra == 'generate'", specifier = ">=0.30" },
+    { name = "jinja2", marker = "extra == 'generate'", specifier = ">=3.1" },
     { name = "jsonschema", specifier = ">=4.18" },
     { name = "openai", specifier = ">=1.68" },
     { name = "pillow", specifier = ">=11" },
@@ -62,6 +65,7 @@ provides-extras = ["generate"]
 [package.metadata.requires-dev]
 dev = [
     { name = "huggingface-hub", specifier = ">=0.30" },
+    { name = "jinja2", specifier = ">=3.1" },
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.6" },
 ]
