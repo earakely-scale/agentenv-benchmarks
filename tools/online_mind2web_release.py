@@ -4,7 +4,7 @@ views it.
     python tools/online_mind2web_release.py build OUT --pass NAME=EXPORTS [--pass ...] [--note NAME=TEXT ...]
     python tools/online_mind2web_release.py upload OUT [--dataset REPO] [--space REPO]
 
-EXPORTS holds `tools/` and `cdp/`, each a folder `export` wrote and `judge` graded: a folder per task and
+EXPORTS holds `tools/` and `cdp/`, or one of them, each a folder `export` wrote and `judge` graded, or a link to one: a folder per task and
 `webjudge.jsonl`, and `settings.json`, the pass's models and their settings: for each arm its agent, version, model,
 effort, thinking, output and step limits, and how each was found, and the judge's model, snapshot, reasoning effort,
 max tokens and temperature. `build` writes OUT as the dataset's files, refusing a run whose model or judge snapshot
@@ -49,6 +49,8 @@ def build(out: Path, passes: dict[str, Path], notes: dict[str, str]) -> None:
     rows, index = [], []
     for name, root in passes.items():
         settings = _settings(root / "settings.json")
+        # A pass publishes the arms its folder holds, and says only their agents.
+        settings = {**settings, "agents": {arm: agent for arm, agent in settings["agents"].items() if (root / arm).is_dir()}}
         runs = []
         for arm in ARMS:
             folder = root / arm
@@ -152,7 +154,7 @@ def _rates(runs: list[dict]) -> dict:
 
 def _tar(folder: Path, path: Path) -> None:
     with tarfile.open(path, "w:gz") as tar:
-        tar.add(folder, arcname=folder.name)
+        tar.add(folder.resolve(), arcname=folder.name)
 
 
 def _scan(out: Path, roots) -> None:
@@ -303,10 +305,11 @@ def upload(out: Path, dataset_repo: str, space_repo: str) -> None:
 
     api = HfApi()
     api.create_repo(dataset_repo, repo_type="dataset", private=False, exist_ok=True)
-    api.upload_folder(repo_id=dataset_repo, repo_type="dataset", folder_path=str(out),
+    # The dataset is the build: a file the build no longer has, a run or a pass taken out, goes from the Hub too.
+    api.upload_folder(repo_id=dataset_repo, repo_type="dataset", folder_path=str(out), delete_patterns="*",
                       commit_message=f"Online-Mind2Web runs, {datetime.now(UTC):%Y-%m-%d %H:%M} UTC")
     api.create_repo(space_repo, repo_type="space", space_sdk="static", private=False, exist_ok=True)
-    api.upload_folder(repo_id=space_repo, repo_type="space", folder_path=str(SPACE_SOURCE),
+    api.upload_folder(repo_id=space_repo, repo_type="space", folder_path=str(SPACE_SOURCE), delete_patterns="*",
                       commit_message="Online-Mind2Web viewer")
     print(f"https://huggingface.co/datasets/{dataset_repo}\nhttps://huggingface.co/spaces/{space_repo}")
 
