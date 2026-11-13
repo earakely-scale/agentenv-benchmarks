@@ -101,6 +101,23 @@ def test_a_cdp_run_reads_its_input_events_as_the_actions_they_make():
         "SCROLL page -> scroll up by 400px | SUCCESS"]
 
 
+
+def test_a_tab_no_one_saw_is_no_step_as_browser_use_opens_one_for_itself_and_its_stop_closes_it_again():
+    log = [
+        _line(3, via="cdp", who="default-agent", method="Target.createTarget", tab="S1",
+              params={"url": "about:blank", "background": True}),
+        _line(4, via="cdp", who="default-agent", method="Target.closeTarget", tab="S1", params={"targetId": "S1"}),
+        _line(5, via="cdp", who="default-agent", method="Target.activateTarget", params={"targetId": "T1"}),
+        _line(6, via="cdp", who="default-agent", method="Page.navigate", params={"url": "https://shop.test/"}),
+        _line(7, via="cdp", who="default-agent", method="Target.closeTarget", tab="S1", params={"targetId": "S1"},
+              ok=False, error="No target with given id found"),
+    ]
+    frames = [_frame(0, "first"), _frame(1, "action", [3, 4]), _frame(2, "action", [5, 6]),
+              _frame(3, "action", [7]), _frame(4, "last")]
+
+    assert [action for _, action, _ in export.steps(_run(frames, log).manifest, log)] == [
+        "page -> NAVIGATE -> switch to another tab; then go to https://shop.test/ | SUCCESS"]
+
 def test_an_action_still_going_when_the_run_ended_is_said_to_be_and_counts_toward_no_status():
     log = [
         _line(3, via="mcp", who="default", tool="browser_navigate", args={"url": "https://shop.test/"}),

@@ -78,8 +78,9 @@ class NotExportable(Exception):
 def steps(manifest: dict, log: list[dict]) -> list[tuple[dict, str, str | None]]:
     """Each action step's frame, its action in grammar A and its status, in order."""
     entries = {line["seq"]: line["action"] for line in log if "action" in line}
+    unseen = _unseen(entries)
     frames = [frame for frame in manifest["frames"] if frame["kind"] == "action"]
-    covered = [_covered(frame, entries) for frame in frames]
+    covered = [_covered(frame, entries, unseen) for frame in frames]
     last_of = {}
     for index, keys in enumerate(covered):
         for key in keys:
@@ -191,12 +192,32 @@ def _left_open(store, entry: dict, instance_id: str) -> dict[str, str]:
                    if frame.get("path")}
 
 
-def _covered(frame: dict, entries: dict[int, dict]) -> set[tuple[str, int]]:
-    """What the frame follows: the agent's ``browser_*`` calls, by the seq they began at, and its own CDP commands."""
+def _unseen(entries: dict[int, dict]) -> set[int]:
+    """The CDP commands of tabs no one saw, which aren't the task's steps: a tab opened and closed with nothing done in
+    it, as browser-use opens one for itself and closes it when it drives the browser's own, and a tab command on a tab
+    already gone, which changed nothing, as its stop closing that tab again."""
+    unseen, opened = set(), {}
+    for seq in sorted(entries):
+        entry = entries[seq]
+        method, tab = entry.get("method") or "", entry.get("tab")
+        if method.startswith("Target.") and entry.get("ok") is False and "No target" in (entry.get("error") or ""):
+            unseen.add(seq)
+        elif method == "Target.createTarget" and entry.get("ok", True) is not False:
+            opened[tab] = seq
+        elif method == "Target.closeTarget" and tab in opened:
+            unseen |= {opened.pop(tab), seq}
+        elif entry.get("acts") and tab in opened:
+            del opened[tab]
+    return unseen
+
+
+def _covered(frame: dict, entries: dict[int, dict], unseen: set[int] = frozenset()) -> set[tuple[str, int]]:
+    """What the frame follows: the agent's ``browser_*`` calls, by the seq they began at, and its own CDP commands,
+    but those of tabs no one saw."""
     keys = set()
     for seq in frame.get("after") or []:
         entry = entries.get(seq)
-        if entry is None:
+        if entry is None or seq in unseen:
             continue
         if entry.get("via") == "mcp":
             keys.add(("mcp", seq))
