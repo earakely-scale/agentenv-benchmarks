@@ -88,6 +88,13 @@ main.run { overflow-y: auto; min-height: 0; padding-block: 20px 60px;
 .facts dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-size: 13px; }
+.facts-h { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.how { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 13.5px; color: var(--muted); }
+.how b { color: var(--ink); }
+.setting { display: grid; gap: 4px; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); }
+.setting b { font-size: 14.5px; color: var(--accent); }
+.setting span { font: 12px/1.45 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.chip.strong { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .run-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 0 24px; align-items: start; max-width: 1260px; }
 .run-head { grid-column: 1 / -1; }
 .run-head .chips { margin-bottom: 18px; }
@@ -184,6 +191,9 @@ const key = (run) => `${run.arm}-${run.task_id}`;
 const url = (path) => new URL(path, DATA).href;
 const host = (site) => { try { return new URL(site).hostname.replace(/^www\./, ""); } catch { return site; } };
 const pct = (n, d) => d ? `${Math.round((100 * n) / d)}%` : "–";
+const THINKING = { adaptive: "adaptive thinking", off: "no reasoning" };
+const passSettings = () => (state.index.passes.find((p) => p.name === state.pass) || {}).settings || { agents: {}, judge: {} };
+const effortText = (a) => `effort ${a.effort}${THINKING[a.thinking] ? " · " + THINKING[a.thinking] : ""}`;
 
 async function json(path) {
   const response = await fetch(url(path), { cache: "no-cache" });
@@ -286,7 +296,7 @@ function renderOverview() {
     const runs = state.runs.filter((r) => r.arm === arm);
     const graded = runs.filter((r) => r.grade === "success" || r.grade === "failure");
     const ok = graded.filter((r) => r.grade === "success").length;
-    const models = [...new Set(runs.map((r) => r.model).filter(Boolean))].join(", ");
+    const agent = passSettings().agents[arm];
     const levels = LEVELS.map((level) => {
       const at = graded.filter((r) => r.level === level);
       const wins = at.filter((r) => r.grade === "success").length;
@@ -298,22 +308,29 @@ function renderOverview() {
     const errors = runs.filter((r) => r.grade === "error").length, ungraded = runs.filter((r) => r.grade === "ungraded").length;
     return el("section", { class: "arm" },
       el("h3", { text: ARMS[arm] || arm }),
+      agent ? el("div", { class: "setting" },
+        el("b", { text: `${agent.model_name} at ${effortText(agent)}` }),
+        el("span", { text: `${agent.agent} ${agent.version} · model ${agent.model} · up to ${agent.max_output_tokens.toLocaleString("en-US")} output tokens${agent.step_limit ? ` · ${agent.step_limit}-step limit` : ""}` })) : null,
       el("div", { class: "rate" }, pct(ok, graded.length), el("small", { text: `${ok} of ${graded.length} succeeded, by WebJudge` })),
       el("div", { class: "levels" }, levels),
-      el("div", { class: "chips", style: "margin: 0" }, models ? el("span", { class: "chip", text: models }) : null,
+      el("div", { class: "chips", style: "margin: 0" },
         errors ? el("span", { class: "chip", text: `${errors} judge error${errors === 1 ? "" : "s"}` }) : null,
         ungraded ? el("span", { class: "chip", text: `${ungraded} ungraded` }) : null));
   });
-  const judge = state.index.judge || {};
+  const settings = passSettings(), judge = settings.judge || {};
+  const how = Object.entries(settings.agents || {}).map(([arm, a]) => el("li", {}, el("b", { text: `${ARMS[arm] || arm}: ` }), a.how));
+  if (judge.how) how.push(el("li", {}, el("b", { text: "WebJudge: " }), judge.how));
   return el("div", { class: "overview" },
     el("h2", { text: `Pass “${state.pass}”: ${state.runs.length} runs` }),
     pass && pass.note ? el("p", { text: pass.note }) : null,
     el("div", { class: "arms" }, cards),
     el("div", { class: "facts" }, el("dl", {},
       el("dt", { text: "Tasks" }), el("dd", {}, el("a", { href: `https://huggingface.co/datasets/${state.index.dataset}`, target: "_blank", rel: "noopener", text: state.index.dataset }), ` @ ${String(state.index.revision).slice(0, 8)}`),
-      el("dt", { text: "Judge" }), el("dd", { text: `WebJudge (${judge.code || "?"}) on ${judge.snapshot || judge.model || "?"}` }),
+      el("dt", { text: "Judge" }), el("dd", { text: `WebJudge on ${judge.model_name || "?"} (${judge.snapshot || "?"}) at reasoning effort ${judge.reasoning_effort || "?"} · max ${(judge.max_tokens || 0).toLocaleString("en-US")} tokens · temperature ${judge.temperature} · ${judge.mode || ""}` }),
+      el("dt", { text: "Judge code" }), el("dd", { text: judge.code || "?" }),
       el("dt", { text: "Browser" }), el("dd", { text: "agent-env chromium, alone and headful, 1280×800, blank start tab" }),
       el("dt", { text: "Built" }), el("dd", { text: state.index.generated || "?" }))),
+    how.length ? el("div", { class: "facts" }, el("h3", { class: "facts-h", text: "How the model settings were found" }), el("ul", { class: "how" }, how)) : null,
     el("p", { text: "Pick a run on the left to see its steps, the frame after each, the agent's answer and WebJudge's verdict. Sites that blocked agent-env's pre-flight sweep stay in, and their runs usually fail." }));
 }
 
@@ -343,7 +360,7 @@ function renderRun(run) {
       el("span", { class: "chip" }, el("a", { href: run.website, target: "_blank", rel: "noopener", text: host(run.website) })),
       el("span", { class: "chip", text: run.level }), el("span", { class: "chip", text: ARMS[run.arm] || run.arm }),
       el("span", { class: "chip", text: `${run.actions} steps · people took ${run.reference_length}` }),
-      run.model ? el("span", { class: "chip", text: run.model }) : null));
+      el("span", { class: "chip strong", text: `${(passSettings().agents[run.arm] || {}).model_name || run.agent_model} · ${effortText({ effort: run.agent_effort, thinking: run.agent_thinking })}` })));
   const task = el("div", { class: "task" },
     el("div", { class: "card answer" }, el("h3", { text: "The agent's answer" }), el("pre", { text: run.answer || "The agent gave no answer." })),
     el("div", { class: "steps" }, steps));
@@ -353,9 +370,11 @@ function renderRun(run) {
   const points = run.key_points ? el("div", { class: "card" }, el("h3", { text: "Key points WebJudge checked" }),
     el("p", { class: "kp", text: run.key_points.trim() })) : null;
   const ids = el("div", { class: "card" }, el("h3", { text: "This run" }), el("div", { class: "ids" },
+    el("div", {}, el("b", { text: "Agent" }), run.agent),
+    el("div", {}, el("b", { text: "Model" }), `${run.agent_model} · ${effortText({ effort: run.agent_effort, thinking: run.agent_thinking })}`),
     el("div", {}, el("b", { text: "Task" }), run.task_id),
     run.recording_id ? el("div", {}, el("b", { text: "Recording" }), run.recording_id) : null,
-    el("div", {}, el("b", { text: "Judge" }), run.judge_snapshot || "–"),
+    el("div", {}, el("b", { text: "Judge" }), `${run.judge_snapshot || run.judge_model || "–"} · reasoning effort ${run.judge_effort}`),
     el("div", {}, el("b", { text: "Export" }), el("a", { href: url(run.export), text: run.export }), ` (${run.task_id}/)`)));
   return el("div", { class: "run-grid" }, head, task, el("div", { class: "side" }, verdict, points, ids));
 }

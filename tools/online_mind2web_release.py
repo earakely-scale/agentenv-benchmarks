@@ -5,8 +5,11 @@ views it.
     python tools/online_mind2web_release.py upload OUT [--dataset REPO] [--space REPO]
 
 EXPORTS holds `tools/` and `cdp/`, each a folder `export` wrote and `judge` graded: a folder per task and
-`webjudge.jsonl`. `build` writes OUT as the dataset's files, refusing anything that looks like a credential; `upload`
-creates the dataset and the Space, public, and uploads each in one commit.
+`webjudge.jsonl`, and `settings.json`, the pass's models and their settings: for each arm its agent, version, model,
+effort, thinking, output and step limits, and how each was found, and the judge's model, snapshot, reasoning effort,
+max tokens and temperature. `build` writes OUT as the dataset's files, refusing a run whose model or judge snapshot
+isn't its pass's, and anything that looks like a credential; `upload` creates the dataset and the Space, public, and
+uploads each in one commit.
 """
 from __future__ import annotations
 
@@ -29,6 +32,11 @@ SPACE_SOURCE = Path(__file__).resolve().parent.parent / "space" / "online-mind2w
 ARMS = {"tools": "Claude Code with Playwright MCP's browser_* tools", "cdp": "Browser Use over CDP"}
 #: A run's frames, as the Space shows them: this wide, stacked into sheets of this many, well under JPEG's 65,535 px.
 WIDTH, QUALITY, PER_SHEET = 800, 68, 24
+#: What each pass's settings.json says, for each arm and for the judge.
+AGENT_KEYS = ("agent", "version", "drives", "model", "model_name", "effort", "thinking", "max_output_tokens",
+              "step_limit", "time_limit_s", "how")
+JUDGE_KEYS = ("model", "model_name", "snapshot", "reasoning_effort", "max_tokens", "temperature", "score_threshold",
+              "mode", "code", "how")
 #: What a credential looks like, which no published file may hold.
 SECRETS = re.compile(r"sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|hf_[A-Za-z0-9]{30,}|Bearer [A-Za-z0-9._-]{20,}|"
                      r"LITELLM_API_KEY=|ASIA[0-9A-Z]{16}")
@@ -39,33 +47,56 @@ def build(out: Path, passes: dict[str, Path], notes: dict[str, str]) -> None:
     (out / "exports").mkdir(exist_ok=True)
     rows, index = [], []
     for name, root in passes.items():
+        settings = _settings(root / "settings.json")
         runs = []
         for arm in ARMS:
             folder = root / arm
             if not folder.is_dir():
                 continue
+            if arm not in settings["agents"]:
+                raise SystemExit(f"{root / 'settings.json'} names no agent for the {arm} arm")
             grades = {json.loads(line)["task_id"]: json.loads(line)
                       for line in (folder / judge.GRADES).read_text().splitlines() if line.strip()}
             for task in sorted(p.parent for p in folder.glob("*/result.json")):
-                runs.append(_run(name, arm, task, grades.get(task.name) or {}, out))
+                runs.append(_run(name, arm, task, grades.get(task.name) or {}, settings, out))
             _tar(folder, out / "exports" / f"{name}-{arm}.tar.gz")
         (out / "viewer" / f"{name}.json").write_text(json.dumps({"pass": name, "note": notes.get(name), "runs": runs}))
         rows += [{key: value for key, value in run.items() if key not in ("steps", "width", "sheets")}
                  for run in runs]
-        index.append({"name": name, "note": notes.get(name), "runs": len(runs), "graded": _rates(runs)})
+        index.append({"name": name, "note": notes.get(name), "runs": len(runs), "graded": _rates(runs),
+                      "settings": settings})
     (out / "runs.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows))
     (out / "viewer" / "index.json").write_text(json.dumps({
         "generated": datetime.now(UTC).isoformat(timespec="seconds"), "dataset": dataset.REPO,
-        "revision": dataset.REVISION, "judge": {"code": judge.JUDGE_CODE, "model": judge.MODEL,
-                                                "snapshot": judge.SNAPSHOT}, "passes": index}))
+        "revision": dataset.REVISION, "passes": index}))
     (out / "README.md").write_text(_card(index))
     _scan(out, passes.values())
     print(f"{len(rows)} runs in {len(index)} passes built into {out}")
 
 
-def _run(name: str, arm: str, folder: Path, graded: dict, out: Path) -> dict:
+def _settings(path: Path) -> dict:
+    """A pass's models and settings, each arm's and the judge's, refused when one leaves a key out."""
+    if not path.is_file():
+        raise SystemExit(f"{path} is missing: a pass says which models ran it and at what effort")
+    settings = json.loads(path.read_text())
+    for arm, agent in (settings.get("agents") or {}).items():
+        if missing := [key for key in AGENT_KEYS if key not in agent]:
+            raise SystemExit(f"{path}: the {arm} agent leaves out {', '.join(missing)}")
+    if missing := [key for key in JUDGE_KEYS if key not in (settings.get("judge") or {})]:
+        raise SystemExit(f"{path}: the judge leaves out {', '.join(missing)}")
+    return settings
+
+
+def _run(name: str, arm: str, folder: Path, graded: dict, settings: dict, out: Path) -> dict:
     result = json.loads((folder / "result.json").read_text())
     meta = json.loads((folder / "agentenv.json").read_text())
+    agent, judged = settings["agents"][arm], settings["judge"]
+    if meta.get("model") != agent["model"]:
+        raise SystemExit(f"{folder} ran {meta.get('model')}, not its pass's {agent['model']}")
+    ran = graded.get("judge") or {}
+    if graded and (ran.get("snapshot"), ran.get("max_tokens")) != (judged["snapshot"], judged["max_tokens"]):
+        raise SystemExit(f"{folder} was graded on {ran.get('snapshot')} with {ran.get('max_tokens')} tokens, not its "
+                         f"pass's {judged['snapshot']} with {judged['max_tokens']}")
     setup = next(s for s in json.loads((BUNDLE / "tasks" / f"{arm}-{result['task_id']}.json").read_text())
                  if s["id"] == "setup")["args"]
     stem = f"viewer/{name}/{arm}-{result['task_id']}"
@@ -94,12 +125,14 @@ def _run(name: str, arm: str, folder: Path, graded: dict, out: Path) -> dict:
         for step, score in zip(steps, scores):
             step["score"] = score
     usage = [r.get("usage") or {} for r in graded.get("reported") or []]
-    return {"pass": name, "arm": arm, "agent": ARMS[arm], "model": meta.get("model"), "task_id": result["task_id"],
+    return {"pass": name, "arm": arm, "agent": f"{agent['agent']} {agent['version']}", "agent_model": agent["model"],
+            "agent_effort": agent["effort"], "agent_thinking": agent["thinking"], "task_id": result["task_id"],
             "task": result["task"], "website": setup["website"], "level": setup["level"],
             "reference_length": result["reference_length"], "actions": len(result["action_history"]) - 1,
             "answer": result.get("agent_final_answer"), "grade": graded.get("grade") or "ungraded",
             "verdict": graded.get("response") or graded.get("error"), "key_points": graded.get("key_points"),
-            "scores": graded.get("scores"), "judge_snapshot": (graded.get("judge") or {}).get("snapshot"),
+            "scores": graded.get("scores"), "judge_model": judged["model"], "judge_snapshot": ran.get("snapshot"),
+            "judge_effort": judged["reasoning_effort"],
             "judge_prompt_tokens": sum(u.get("prompt_tokens", 0) for u in usage),
             "judge_completion_tokens": sum(u.get("completion_tokens", 0) for u in usage),
             "instance_id": meta.get("instance_id"), "recording_id": meta.get("recording_id"),
@@ -147,6 +180,19 @@ def _card(index: list[dict]) -> str:
             rows.append(f"| {item['name']} | {agent} | {total} | {graded.get('success', 0)} | "
                         f"{graded.get('success', 0) / total:.0%} | {graded.get('error', 0)} |")
     notes = "\n".join(f"- **{item['name']}:** {item['note']}" for item in index if item.get("note"))
+    models, judges, hows = [], [], []
+    for names, settings in _by_settings(index):
+        passes = ", ".join(names)
+        for arm, agent in settings["agents"].items():
+            models.append(f"| {passes} | `{arm}` | {agent['agent']} {agent['version']} | {agent['model_name']} "
+                          f"(`{agent['model']}`) | **{agent['effort']}** | {agent['thinking']} | "
+                          f"{agent['max_output_tokens']:,} | {agent['step_limit'] or 'none'} | {agent['time_limit_s']} s |")
+            hows.append(f"- **`{arm}`{'' if len(index) == 1 else ', ' + passes}:** {agent['how']}")
+        j = settings["judge"]
+        judges.append(f"| {passes} | {j['model_name']} (`{j['snapshot']}`) | **{j['reasoning_effort']}** | "
+                      f"{j['max_tokens']:,} | {j['temperature']} | {j['score_threshold']} |")
+        hows.append(f"- **The judge{'' if len(index) == 1 else ', ' + passes}:** {j['how']}")
+    headline = _headline(index)
     return f"""---
 license: cc-by-4.0
 pretty_name: Online-Mind2Web on agent-env
@@ -169,6 +215,20 @@ Runs of [Online-Mind2Web](https://github.com/OSU-NLP-Group/Online-Mind2Web)'s 30
 
 The tasks come from [`{dataset.REPO}`](https://huggingface.co/datasets/{dataset.REPO}) at revision `{dataset.REVISION}`,
 as the [Online-Mind2Web bundle](https://github.com/earakely-scale/agentenv-benchmarks) runs them.
+
+{headline}
+
+## Models and effort
+
+| Pass | Arm | Agent | Model | Effort | Thinking | Max output tokens | Step limit | Time limit |
+|---|---|---|---|---|---|---:|---:|---:|
+{chr(10).join(models)}
+
+| Pass | Judge | Reasoning effort | Max tokens | Temperature | Score threshold |
+|---|---|---|---:|---:|---:|
+{chr(10).join(judges)}
+
+{chr(10).join(hows)}
 
 ## Results
 
@@ -196,12 +256,13 @@ as the [Online-Mind2Web bundle](https://github.com/earakely-scale/agentenv-bench
 
 ## Files
 
-- `runs.jsonl`: a row per run: its pass, arm, model, task, website, level, the agent's answer, WebJudge's grade,
-  verdict and key points, and the run's ids.
+- `runs.jsonl`: a row per run: its pass, arm, agent and version, model, effort and thinking, task, website, level,
+  the agent's answer, WebJudge's model, snapshot, effort, grade, verdict and key points, and the run's ids.
 - `exports/<pass>-<arm>.tar.gz`: each run in Online-Mind2Web's v2 result format (`result.json` and `trajectory/`),
   WebJudge's grades (`webjudge.jsonl`), and `agentenv.json`, which names the run. Regrade with
   `python -m agentenv_benchmarks.online_mind2web.judge`.
-- `viewer/`: what the Space shows: a pass's runs with their steps, and each run's frames stacked into sheets.
+- `viewer/`: what the Space shows: a pass's runs with their steps, each run's frames stacked into sheets, and
+  `index.json`, each pass's results and its models and settings, as the tables above give them.
 
 ## License and attribution
 
@@ -211,6 +272,29 @@ Current State of Web Agents" (2025), and Deng et al., "Mind2Web: Towards a Gener
 2023). The frames are screenshots of public websites as the agents saw them, kept for reviewing the runs; the sites'
 content stays their owners'.
 """
+
+
+def _by_settings(index: list[dict]) -> list[tuple[list[str], dict]]:
+    """The passes grouped by their settings, each group's names with the settings they share, in pass order."""
+    groups: dict[str, tuple[list[str], dict]] = {}
+    for item in index:
+        groups.setdefault(json.dumps(item["settings"], sort_keys=True), ([], item["settings"]))[0].append(item["name"])
+    return list(groups.values())
+
+
+def _headline(index: list[dict]) -> str:
+    """Each arm's model and effort and the judge's, once for passes that share them."""
+    thinking = {"adaptive": ", adaptive thinking", "off": ", no reasoning"}
+    lines = []
+    for names, settings in _by_settings(index):
+        agents = "; ".join(f"`{arm}`, {a['agent']} on {a['model_name']} (`{a['model']}`) at effort **{a['effort']}**"
+                           f"{thinking.get(a['thinking'], '')}" for arm, a in settings["agents"].items())
+        j = settings["judge"]
+        judged = f"Judge: WebJudge on {j['model_name']} (`{j['snapshot']}`) at reasoning effort **{j['reasoning_effort']}**."
+        lines.append((names, f"{agents}. {judged}"))
+    if len(lines) == 1:
+        return f"**{'Every pass' if len(index) > 1 else index[0]['name']}:** {lines[0][1]}"
+    return "\n".join(f"- **{', '.join(names)}:** {line}" for names, line in lines)
 
 
 def upload(out: Path, dataset_repo: str, space_repo: str) -> None:

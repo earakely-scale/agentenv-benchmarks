@@ -100,7 +100,10 @@ python tools/online_mind2web_release.py build release --pass pass1=results/pass1
 python tools/online_mind2web_release.py upload release
 ```
 
-Each `--pass` folder holds `tools/` and `cdp/`, each one `export` wrote and `judge` graded. `build` refuses any file
+Each `--pass` folder holds `tools/` and `cdp/`, each one `export` wrote and `judge` graded, and `settings.json`, the
+pass's models and how they ran: each arm's agent and version, model, effort, thinking and limits, and the judge's
+model, snapshot and reasoning effort, each with how it was found. The dataset card, every row and the Space say them.
+`build` refuses a run whose model or judge snapshot isn't its pass's, and any file
 that holds something shaped like a credential, the LiteLLM key in use or this machine's home folder. `upload` uploads
 the dataset and the Space (`space/online-mind2web/`) public, each in one commit. The published runs are at
 [`earakely-scale/OnlineMind2Web-AgentEnv`](https://huggingface.co/datasets/earakely-scale/OnlineMind2Web-AgentEnv),
