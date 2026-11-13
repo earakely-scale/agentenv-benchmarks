@@ -9,7 +9,9 @@ frame is keyed to. A call that spans several bursts is one step, with the frame 
 tab, isn't a step; the last frame is the ``TASK_COMPLETE`` step, with the agent's answer. Thoughts are null.
 
 A run is written to ``OUT/<task_id>/``, beside ``agentenv.json``, which names the run, its arm and the dataset revision
-it ran; a run whose frames recording didn't end complete isn't exported."""
+it ran, and the error its agent ended with, if any; a run whose frames recording didn't end complete isn't exported. A
+run whose agent failed, running out of steps say, is exported as any other: its recording, left open by the run and
+ended by its teardown, is read from where the browser wrote it."""
 from __future__ import annotations
 
 import argparse
@@ -55,6 +57,8 @@ class Run:
     log: list[dict]
     frame: Callable[[str], bytes]
     model: str | None = None
+    #: The error the agent ended with, as its prompt response names it, such as running out of steps.
+    agent_error: str | None = None
 
 
 @dataclass
@@ -126,7 +130,8 @@ def write(run: Run, out: Path) -> Path:
         "instance_id": run.instance_id, "arm": record.get("arm"), "model": run.model,
         "dataset": record.get("dataset"), "revision": record.get("revision"), "sha256": record.get("sha256"),
         "level": record.get("level"), "browser": record.get("browser"),
-        "recording_id": run.manifest.get("recording_id"), "schema_commit": v2.SCHEMA_COMMIT}, indent=1) + "\n",
+        "recording_id": run.manifest.get("recording_id"), "recording_ended_by": run.manifest.get("ended_by"),
+        "agent_error": run.agent_error, "schema_commit": v2.SCHEMA_COMMIT}, indent=1) + "\n",
         encoding="utf-8")
     if found := v2.problems(folder):
         raise NotExportable(f"{folder} doesn't validate: {'; '.join(found)}")
@@ -141,14 +146,17 @@ def load(instance_id: str) -> Run:
             raise NotExportable(f"no run {instance_id} is recorded")
         context = instance.context
         metadata = context.get("metadata") or {}
-        entry = (metadata.get("browser_recordings") or {}).get(template.FRAMES)
-        if not entry or entry.get("state") != "ended" or "artifact" not in entry:
-            raise NotExportable(f"run {instance_id}'s frames recording didn't end: {(entry or {}).get('error')}")
-        if entry.get("missing_frames") or not entry.get("log_uploaded") or entry.get("log_missing"):
-            raise NotExportable(f"run {instance_id}'s frames recording is incomplete")
-        universe = Artifact.get(entry["artifact"]["id"], version=entry["artifact"]["version"])
+        entry = (metadata.get("browser_recordings") or {}).get(template.FRAMES) or {}
         store = get_config().get_object_store()
-        urls = {name: Artifact.get(file_id).object_url for name, file_id in universe.file_artifact_ids.items()}
+        if entry.get("state") == "ended" and "artifact" in entry:
+            if entry.get("missing_frames") or not entry.get("log_uploaded") or entry.get("log_missing"):
+                raise NotExportable(f"run {instance_id}'s frames recording is incomplete")
+            universe = Artifact.get(entry["artifact"]["id"], version=entry["artifact"]["version"])
+            urls = {name: Artifact.get(file_id).object_url for name, file_id in universe.file_artifact_ids.items()}
+        elif entry.get("state") == "open" and entry.get("namespace") and entry.get("recording_id"):
+            urls = _left_open(store, entry, instance_id)
+        else:
+            raise NotExportable(f"run {instance_id}'s frames recording didn't end: {entry.get('error')}")
         manifest = json.loads(store.get(urls["manifest.json"]))
         log = [json.loads(line) for line in store.get(urls["log.jsonl"]).decode().splitlines() if line.strip()]
     answered = next((r for r in context.get("prompt_responses") or [] if r.get("prompt_id") == template.PROMPT_ID),
@@ -162,7 +170,25 @@ def load(instance_id: str) -> Run:
             return store.get(urls[path.replace("/", "-")])
 
     return Run(instance_id=instance_id, record=record, answer=(answered.get("response") or "").strip() or None,
-               manifest=manifest, log=log, frame=frame, model=answered.get("model"))
+               manifest=manifest, log=log, frame=frame, model=answered.get("model"),
+               agent_error=answered.get("error_code"))
+
+
+def _left_open(store, entry: dict, instance_id: str) -> dict[str, str]:
+    """The files of a frames recording its run left open, as a run whose agent failed leaves it, which teardown ended
+    in the browser: read from its namespace, as the browser wrote them, when its manifest says it ended complete."""
+    base = f"{entry['namespace'].rstrip('/')}/{entry['recording_id']}"
+    try:
+        manifest = json.loads(store.get(f"{base}/manifest.json"))
+    except Exception as e:  # noqa: BLE001 - any store's not-found
+        raise NotExportable(f"run {instance_id}'s frames recording didn't end: {type(e).__name__}") from None
+    if not manifest.get("ended_by") or manifest.get("error"):
+        raise NotExportable(f"run {instance_id}'s frames recording didn't end: {manifest.get('error')}")
+    if not manifest.get("log_uploaded") or manifest.get("log_missing"):
+        raise NotExportable(f"run {instance_id}'s frames recording is incomplete")
+    urls = {"manifest.json": f"{base}/manifest.json", "log.jsonl": f"{base}/{manifest.get('log') or 'log.jsonl'}"}
+    return urls | {frame["path"].replace("/", "-"): f"{base}/{frame['path']}" for frame in manifest["frames"]
+                   if frame.get("path")}
 
 
 def _covered(frame: dict, entries: dict[int, dict]) -> set[tuple[str, int]]:

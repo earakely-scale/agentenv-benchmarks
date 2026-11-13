@@ -183,3 +183,31 @@ def test_a_run_is_loaded_from_its_record_its_frames_recording_and_its_answer(mon
     context["metadata"]["browser_recordings"]["frames"]["missing_frames"] = 2
     with pytest.raises(export.NotExportable, match="incomplete"):
         export.load("run-1")
+
+
+def test_a_run_whose_agent_failed_is_loaded_from_the_recording_its_teardown_ended(monkeypatch):
+    base = "file:///store/recordings/ns/rec-1"
+    manifest = {"recording_id": "rec-1", "ended_by": "teardown", "error": None, "log": "log.jsonl",
+                "log_uploaded": True, "log_missing": [], "frames": [{"path": "frames/0000.jpg", "uploaded": True}]}
+    objects = {f"{base}/manifest.json": json.dumps(manifest).encode(),
+               f"{base}/log.jsonl": b'{"seq": 1, "at": "t", "action": {"via": "cdp"}}\n',
+               f"{base}/frames/0000.jpg": b"jpeg"}
+    entry = {"state": "open", "namespace": "file:///store/recordings/ns", "recording_id": "rec-1"}
+    context = {"metadata": {"browser_recordings": {"frames": entry}, "script_results": {"setup": RECORD}},
+               "prompt_responses": [{"prompt_id": "answer", "response": "Out of steps.", "model": "claude",
+                                     "error_code": "browser_use.max_steps"}]}
+    monkeypatch.setattr(export, "find_task_instance", lambda instance_id: SimpleNamespace(context=context))
+    monkeypatch.setattr(export, "get_config", lambda: SimpleNamespace(
+        get_object_store=lambda: SimpleNamespace(get=objects.__getitem__)))
+    run = export.load("run-1")
+
+    assert (run.answer, run.agent_error, run.manifest["ended_by"]) == ("Out of steps.", "browser_use.max_steps",
+                                                                       "teardown")
+    assert run.frame("frames/0000.jpg") == b"jpeg"
+    manifest["log_missing"] = [3]
+    objects[f"{base}/manifest.json"] = json.dumps(manifest).encode()
+    with pytest.raises(export.NotExportable, match="incomplete"):
+        export.load("run-1")
+    del objects[f"{base}/manifest.json"]
+    with pytest.raises(export.NotExportable, match="didn't end"):
+        export.load("run-1")
