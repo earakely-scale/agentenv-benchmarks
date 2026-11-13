@@ -38,8 +38,9 @@ AGENT_KEYS = ("agent", "version", "drives", "model", "model_name", "effort", "th
 JUDGE_KEYS = ("model", "model_name", "snapshot", "reasoning_effort", "max_tokens", "temperature", "score_threshold",
               "mode", "code", "how")
 #: What a credential looks like, which no published file may hold.
-SECRETS = re.compile(r"sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|hf_[A-Za-z0-9]{30,}|Bearer [A-Za-z0-9._-]{20,}|"
-                     r"LITELLM_API_KEY=|ASIA[0-9A-Z]{16}")
+#: Each starts at a word's start, so a word that holds one, as a URL's ``ask-construction-co`` holds ``sk-``, isn't one.
+SECRETS = re.compile(r"(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|hf_[A-Za-z0-9]{30,}|ASIA[0-9A-Z]{16})|"
+                     r"Bearer [A-Za-z0-9._-]{20,}|LITELLM_API_KEY=")
 
 
 def build(out: Path, passes: dict[str, Path], notes: dict[str, str]) -> None:

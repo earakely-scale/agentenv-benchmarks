@@ -94,6 +94,8 @@ def test_a_pass_whose_runs_dont_match_its_settings_or_that_has_none_is_refused(t
         release.build(tmp_path / "out", {"p1": exports}, {})
 
 
-def test_a_run_holding_what_looks_like_a_credential_is_refused(tmp_path):
+def test_a_run_holding_what_looks_like_a_credential_is_refused_but_not_a_word_that_holds_one(tmp_path):
     with pytest.raises(SystemExit, match="credential"):
         _release().build(tmp_path / "out", {"p1": _exported(tmp_path / "exports", answer="key sk-" + "a" * 24)}, {})
+    slug = "https://www.bbb.org/us/ny/astoria/profile/roofing/ask-construction-corporation-0121-1234"
+    _release().build(tmp_path / "out2", {"p1": _exported(tmp_path / "exports2", answer=slug)}, {})
