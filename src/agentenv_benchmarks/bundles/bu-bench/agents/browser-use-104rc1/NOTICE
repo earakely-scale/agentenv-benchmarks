@@ -1,0 +1,4 @@
+Derived from agents/browser-use in scaleapi/agentenv-framework (Apache-2.0) at
+733a4ff8fb4189c6c442b1ecdc1eac3c04fb61b1. Changes: browser-use 1.0.4rc1 in place of 1.0.3; an OpenAI model through
+the endpoint's Responses route at the turn's effort, as the BU Bench eval adapter ran it; that adapter's system-prompt
+additions; deliverables in /app/agent_outputs; step budget 1000 and turn timeout 3600 s by default; the CDP address (a cloud browser's credential) scrubbed from the trajectory, reply and error text.

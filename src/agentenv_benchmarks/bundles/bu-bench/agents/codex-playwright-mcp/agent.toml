@@ -1,0 +1,5 @@
+# Codex CLI 0.166.0 + Playwright MCP, as the harness bake-off ran it. Image: artifacts/codex-browser-tools.
+image = "codex-browser-tools"
+
+[default_env_vars]
+BU_BENCH_TOOL = "playwright-mcp"

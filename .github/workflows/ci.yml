@@ -28,6 +28,9 @@ jobs:
         env:
           LITELLM_BASE_URL: http://127.0.0.1:9
           LITELLM_API_KEY: dry-run
+          # bu-bench's preflight checks its Browser Use and judge keys are set; a dry run never uses them.
+          BROWSER_USE_API_KEY: dry-run
+          BU_BENCH_JUDGE_API_KEY: dry-run
         run: |
           bundles=$(uv run python -c "from importlib.metadata import entry_points; print(' '.join(p.name for p in entry_points(group='agent_env.bundles') if p.value.startswith('agentenv_benchmarks')))")
           for bundle in $bundles; do

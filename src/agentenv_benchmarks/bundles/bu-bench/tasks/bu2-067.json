@@ -1,0 +1,7 @@
+[
+  {"id": "deploy", "type": "deploy_agent", "a2a_agent_id": "codex-bu-cli", "env_ids": []},
+  {"id": "browser", "type": "bu_cloud_browser", "task_id": "bu2-067", "depends_on": ["deploy"]},
+  {"id": "solve", "type": "prompt_agent", "prompt_id": "solve", "prompt": "<bu_task>", "effort": "medium", "timeout_seconds": 3600, "fail_task_on_error": false, "depends_on": ["browser"]},
+  {"id": "collect", "type": "collect_artifacts", "base_path": "/app/agent_outputs", "fail_task_on_error": false, "depends_on": ["solve"]},
+  {"id": "grade", "type": "bu_findings_verifier", "task_id": "bu2-067", "prompt_id": "solve", "judge_model": "gpt-5.6-luna", "reasoning_effort": "xhigh", "depends_on": ["solve", "collect"]}
+]

@@ -1,12 +1,16 @@
 [project]
 name = "agentenv-benchmarks"
 version = "0.1.0"
-description = "Public agent benchmarks as agent-env bundles: Online-Mind2Web and WebArena-Verified."
+description = "Public agent benchmarks as agent-env bundles: Online-Mind2Web, WebArena-Verified and BU Bench V2.1, plus bu-browser, a Browser Use Cloud browser env for RL."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.11.4"
-dependencies = ["agentenv-framework>=0.9.1532", "jsonschema>=4.18", "backoff>=2.2", "openai>=1.68", "Pillow>=11"]
+dependencies = [
+    "agentenv-framework>=0.9.1536", "jsonschema>=4.18", "backoff>=2.2", "openai>=1.99", "Pillow>=11",
+    # BU Bench V2.1 (its frozen judge imports openai's 1.99+ tool-call types): decrypting its tasks, its Browser Use Cloud browser, and its frozen judge's own imports.
+    "cryptography>=44", "httpx>=0.27", "websockets>=13", "google-genai>=1.20", "pydantic>=2.11",
+]
 
 [project.optional-dependencies]
 # Only to regenerate a benchmark's tasks from its source dataset.
@@ -16,12 +20,22 @@ generate = ["huggingface_hub>=0.30", "jinja2>=3.1"]
 [project.entry-points."agent_env.bundles"]
 online-mind2web = "agentenv_benchmarks.bundles"
 webarena-verified = "agentenv_benchmarks.bundles"
+bu-bench = "agentenv_benchmarks.bundles"
+bu-browser = "agentenv_benchmarks.bundles"
+
+[project.entry-points."agent_env.envs"]
+bu_browser = "agentenv_benchmarks.bu_browser.env:BuBrowserEnv"
+
+[project.entry-points."agent_env.task_steps"]
+bu_cloud_browser = "agentenv_benchmarks.bu_bench.steps:BuCloudBrowserTaskStep"
+bu_findings_verifier = "agentenv_benchmarks.bu_bench.steps:BuFindingsVerifierTaskStep"
 
 [project.urls]
 Repository = "https://github.com/earakely-scale/agentenv-benchmarks"
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6", "huggingface_hub>=0.30", "jinja2>=3.1"]
+# tomli-w: the bu-bench Codex arms' tests import AgentEnv's Codex agent sources, whose codex_config.py imports tomli_w.
+dev = ["pytest>=8", "ruff>=0.6", "huggingface_hub>=0.30", "jinja2>=3.1", "tomli-w>=1.2"]
 
 [build-system]
 requires = ["hatchling>=1.26"]
@@ -35,7 +49,11 @@ line-length = 120
 target-version = "py311"
 # WebJudge's own code, copied unchanged from Online-Mind2Web.
 # WebArena-Verified's answer extractor, copied unchanged from its release.
-extend-exclude = ["src/agentenv_benchmarks/online_mind2web/webjudge", "src/agentenv_benchmarks/webarena_verified/upstream"]
+# BU Bench V2.1's findings judge, vendored unchanged from browser-use/benchmark@1e0e2f1e.
+extend-exclude = ["src/agentenv_benchmarks/online_mind2web/webjudge", "src/agentenv_benchmarks/webarena_verified/upstream",
+                  "src/agentenv_benchmarks/bu_bench/judge"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["docker: needs Docker and a few minutes; skipped unless selected with -m docker"]
+addopts = ["-m", "not docker"]

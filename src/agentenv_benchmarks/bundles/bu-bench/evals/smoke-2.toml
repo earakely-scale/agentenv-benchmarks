@@ -1,0 +1,2 @@
+# The bake-off's two smoke tasks.
+tasks = ["bu2-140", "bu2-149"]

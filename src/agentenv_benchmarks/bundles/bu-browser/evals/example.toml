@@ -1,0 +1,2 @@
+# The bundle's one example task, a smoke test of the env end to end.
+tasks = ["pypi-browser-use-wheel-sha256"]

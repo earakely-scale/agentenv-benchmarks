@@ -1,0 +1,63 @@
+[
+  {
+    "id": "env",
+    "type": "deploy_env",
+    "env_id": "bu-browser",
+    "ttl_seconds": 3600
+  },
+  {
+    "id": "tools",
+    "type": "modify_env_tool_access",
+    "env_id": "bu-browser",
+    "action": "disable",
+    "role": "default",
+    "tools": [
+      "list_website_urls"
+    ],
+    "depends_on": [
+      "env"
+    ]
+  },
+  {
+    "id": "deploy",
+    "type": "deploy_agent",
+    "a2a_agent_id": "codex",
+    "env_ids": [
+      "bu-browser"
+    ],
+    "depends_on": [
+      "env"
+    ]
+  },
+  {
+    "id": "solve",
+    "type": "prompt_agent",
+    "prompt_id": "solve",
+    "timeout_seconds": 900,
+    "fail_task_on_error": false,
+    "depends_on": [
+      "deploy",
+      "tools"
+    ],
+    "prompt": "Use the browser tools. Open https://pypi.org/project/browser-use/1.0.3/#files and find the SHA256 hash of browser_use-1.0.3-py3-none-any.whl. Reply with the 64-character hash only."
+  },
+  {
+    "id": "grade",
+    "type": "agent_prompt_response_verifier",
+    "prompt_id": "solve",
+    "verifier_id": "wheel-sha256",
+    "depends_on": [
+      "solve"
+    ],
+    "criteria": [
+      {
+        "type": "response_regex_present",
+        "criterion": "wheel sha256",
+        "pattern": "\\A\\s*3721b75f6c501523694ef58cd7a3911c032cdabddbb38bca02709a249465c68f\\s*\\Z",
+        "flags": [
+          "IGNORECASE"
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,4 @@
+# browser-use's own environment, beside the agent's: it pins every dependency exactly, mcp 2 among them, which the
+# protocol's agent extra can't share. 1.0.4rc1 is git 417b9d37d1ab148246fc73894aee014db5b5b5e9, the build of the
+# Nov 13 BU Bench V2.1 run this bundle compares against.
+browser-use==1.0.4rc1

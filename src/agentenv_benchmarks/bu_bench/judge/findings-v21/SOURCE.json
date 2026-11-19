@@ -1,0 +1,24 @@
+{
+  "public_commit": "1e0e2f1ed12d3dfbdfab6b7bff415ec090ff9f74",
+  "browser_use_version": "0.11.5",
+  "files": {
+    "upstream/judge.py": "012d20a030383ce668f47a4c85bd428d933413471d18188fc5b599fe69e70333",
+    "upstream/BU_Bench_V2.enc": "0c014b056192e261b06f04ed6da6dcf37f2135150cf58c87ea839bd4e150e5c3",
+    "upstream/findings_judge.py": "168593f3f64b99baaabc187ad3c82ddc62967ab9ed6095206890bbce99fd4b0b",
+    "upstream/evaluation.py": "f53205aebf789b629fe4d01259691b2c1bf02fcb3e8fe9734842f2d8a308b878",
+    "upstream/screenshot_evidence.py": "277907eee354c6d5635444820d8c62f9aa16fa6ed7a25e8dba464a7e41c2f0c0",
+    "vendor/browser_use/__init__.py": "539d480e44b1cc517760fbbc4818d8fa4261cf8b10770fcee6f2256f67e1ebe9",
+    "vendor/browser_use/llm/messages.py": "511e820a7268bc9c8c0cba4e064c3b0cdfce3d6fb833114f72fcb2d41a976569",
+    "vendor/browser_use/llm/schema.py": "30e0a8c335aa0e9351a4d5dadae6db51a0f5f620576ceb395f44031def2131cb",
+    "vendor/browser_use/llm/views.py": "b82ae7c498a44737cf4a170ea931f1a5b094daa75819ae9133371d2400cdd10f",
+    "vendor/browser_use/llm/__init__.py": "96e8728fdde1129d1a4990b3bff092063f544efa1bc3ec0a333d93a061618d3b",
+    "vendor/browser_use/llm/exceptions.py": "46e63b2d38444fbe2b227bc23540bd4fb3141e518afc8d0ea4f77fd073f125ff",
+    "vendor/browser_use/llm/base.py": "7c703bedff7e5758ace68c593e799adf57b307ffdb2775ed46a9f1fc37bc7bda",
+    "vendor/browser_use/llm/google/chat.py": "236045c2b6cd925673d75966752092be33423d1e016a92e41f2ea89371725c0d",
+    "vendor/browser_use/llm/google/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "vendor/browser_use/llm/google/serializer.py": "361d1e4adf02e4d03410c3eb52ca0a825f56c17c7e21326d4d498bcd6a9c860f",
+    "vendor/browser_use/llm/openai/chat.py": "6692fe0d4aa23389499e0c003a492bbad3d4af43093381a3972062a7ef56a968",
+    "vendor/browser_use/llm/openai/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "vendor/browser_use/llm/openai/serializer.py": "dd48c9b4cd210441db2bb6f4b139e6c733b4ae14a128c77e913074d997c7be7b"
+  }
+}

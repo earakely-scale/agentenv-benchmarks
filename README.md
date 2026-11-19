@@ -6,6 +6,11 @@ with `agent-env run <name>`, on agent-env's own environments, against the agents
 | Benchmark | Bundle | Tasks | Arms | Source |
 | --- | --- | --- | --- | --- |
 | [Online-Mind2Web](src/agentenv_benchmarks/bundles/online-mind2web/README.md) | `online-mind2web` | 300 live-web tasks on 147 sites | Browser Use over CDP; Claude Code with Playwright MCP | [`osunlp/Online-Mind2Web`](https://huggingface.co/datasets/osunlp/Online-Mind2Web) @ `eacad896` |
+| [BU Bench V2.1](src/agentenv_benchmarks/bundles/bu-bench/README.md) | `bu-bench` | 200 live-web tasks, encrypted | 8 harnesses: browser-use 1.0.4rc1; Codex with 7 browser tools, each on a Browser Use Cloud browser | [`browser-use/benchmark`](https://github.com/browser-use/benchmark) @ `1e0e2f1e` |
+
+[`bu-browser`](src/agentenv_benchmarks/bundles/bu-browser/README.md) is not a benchmark: it is a Browser Use Cloud
+browser as an env whose Playwright MCP tools a trainer's model drives in an OpenEnv episode (RL), with one example
+task. Keep BU Bench's tasks out of training.
 
 ## Install and run
 
@@ -31,7 +36,10 @@ configuration, sandboxes and stores.
 ```
 src/agentenv_benchmarks/
   bundles/<name>/          a benchmark's bundle: envs, agents, artifacts, tasks/ and evals/, as agent-env reads them
-  <name with underscores>/ the code that generates its tasks from its source dataset, when they're generated
+  <name with underscores>/ the code that generates its tasks from its source dataset, when they're generated, and
+                           any task steps or graders the bundle registers (bu_bench: its two steps and frozen judge)
+                           or env types (bu_browser: the multi env that stops its cloud browser as it closes)
+tools/<name>/              scripts a benchmark keeps out of the package, such as its task generator
 tests/                     checks every bundle parses and its tasks are what its generator makes
 ```
 
@@ -42,7 +50,8 @@ tests/                     checks every bundle parses and its tasks are what its
 2. If its tasks come from a dataset, add `src/agentenv_benchmarks/<name>/` with the dataset pinned to a revision and a
    `__main__` that writes the tasks, as `online_mind2web` does, and commit what it writes.
 3. Register it in `pyproject.toml` under `[project.entry-points."agent_env.bundles"]`:
-   `<name> = "agentenv_benchmarks.bundles"`.
+   `<name> = "agentenv_benchmarks.bundles"`. Task steps a bundle needs beyond agent-env's go under
+   `[project.entry-points."agent_env.task_steps"]`, as `bu-bench`'s two do.
 4. Add it to the table above and its tests to `tests/`.
 
 ## Develop

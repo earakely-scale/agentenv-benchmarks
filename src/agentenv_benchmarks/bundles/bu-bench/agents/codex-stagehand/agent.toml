@@ -1,0 +1,5 @@
+# Codex CLI 0.166.0 + Stagehand v3 behind a small MCP server, as the harness bake-off ran it. Image: artifacts/codex-browser-tools.
+image = "codex-browser-tools"
+
+[default_env_vars]
+BU_BENCH_TOOL = "stagehand"

@@ -1,0 +1,2 @@
+# 20 BU Bench V2.1 tasks, spread over task length, picked from two full reference runs.
+tasks = ["bu2-034", "bu2-046", "bu2-047", "bu2-051", "bu2-055", "bu2-058", "bu2-061", "bu2-095", "bu2-103", "bu2-104", "bu2-129", "bu2-140", "bu2-159", "bu2-161", "bu2-164", "bu2-165", "bu2-167", "bu2-177", "bu2-183", "bu2-193"]
