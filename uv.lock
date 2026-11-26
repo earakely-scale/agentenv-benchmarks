@@ -84,7 +84,7 @@ dev = [
 
 [[package]]
 name = "agentenv-framework"
-version = "0.9.1573"
+version = "0.9.1621"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "a2a-sdk" },
@@ -110,23 +110,23 @@ dependencies = [
     { name = "tzdata" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/8c/2f98fc778c80bc3b3e7467ca06cef9e9e4cf7b68d703367f2d7c43f80300/agentenv_framework-0.9.1573.tar.gz", hash = "sha256:1e06b24e94737ef1a1dbff6e60867e27d4859136c4caa41e6452e0273f803038", size = 7718825, upload-time = "2026-11-18T23:28:19.327Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/5a/8dc370b2600c78353d2ee12f8851ca4588281e96f7aa9dfa44a01f370664/agentenv_framework-0.9.1621.tar.gz", hash = "sha256:fe5527890cda55565d659446eb6b6bb926d75739547c3ad8a1035a166126bcae", size = 8436783, upload-time = "2026-11-23T07:22:12.901Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/5c/177ab518b6f31713b5eed8f9d45e8223f2eb41f91650574da7dfd9d0d99c/agentenv_framework-0.9.1573-py3-none-any.whl", hash = "sha256:13c5f0c70f8c0e4b09dd7ce63d1871b850d9ee92bdb620e07da4c2da288a0a57", size = 4507120, upload-time = "2026-11-18T23:28:16.841Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/9e/69ee7c6ffb6e9af1d2f51ee65cd48d59ac52c9934da2d9a5f89b67035688/agentenv_framework-0.9.1621-py3-none-any.whl", hash = "sha256:c1e5ad0462178a822a4f94c60a856614f9217af8db59b958d6f97a5d92bec2e9", size = 4660101, upload-time = "2026-11-23T07:22:10.629Z" },
 ]
 
 [[package]]
 name = "agentenv-framework-protocol"
-version = "0.1.588"
+version = "0.1.636"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "starlette" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/56/d169370c85b91b09d1ebb77697ae6380bceac3b96e70f97d8852cf3528bc/agentenv_framework_protocol-0.1.588.tar.gz", hash = "sha256:ccdfb8067998c4d24949cf5afef7f745835ce7f2d1484e599978d43ff33698fc", size = 844001, upload-time = "2026-11-18T23:21:12.104Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/d2/71009efbc5bca4b3e5760ac2f59263e5397625f1a667d13e2564f70d77f6/agentenv_framework_protocol-0.1.636.tar.gz", hash = "sha256:06a07b96d197cfb830711866b51a14f1ffeefda8a40f078ea65e08f471fe38f6", size = 948787, upload-time = "2026-11-23T07:15:42.308Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ac/48/bb6c0952a86e9ce3491e5b7eeb0a6f72ae10c749da4f709960e02885f8b9/agentenv_framework_protocol-0.1.588-py3-none-any.whl", hash = "sha256:e2eaa3b7e139b967e73cf148f0caab7bca295dc0523473e73beeef2e6f787ae0", size = 559622, upload-time = "2026-11-18T23:21:10.36Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/0f/908290adba13d27218b76f8696cf96044f4fa78be99022c3112991d9f6e6/agentenv_framework_protocol-0.1.636-py3-none-any.whl", hash = "sha256:8bfba835b8bdddb68d0ae0aeeb47e8cfb4e15e4b1055f63686082eb86b5e24a4", size = 625183, upload-time = "2026-11-23T07:15:40.934Z" },
 ]
 
 [package.optional-dependencies]
